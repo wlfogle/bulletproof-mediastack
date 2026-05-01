@@ -305,7 +305,7 @@ chmod 0775 /mnt/zurg
 cat >/etc/rclone/rclone.conf <<'CFG'
 [zurg]
 type = webdav
-url = http://127.0.0.1:9999/dav
+url = http://127.0.0.1:9999/dav/
 vendor = other
 pacer_min_sleep = 0
 CFG
@@ -323,7 +323,7 @@ Before=jellyfin.service riven.service
 Type=notify
 User=rclone
 Group=media
-ExecStartPre=/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:9999/dav >/dev/null && exit 0; sleep 2; done; exit 1'
+ExecStartPre=/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:9999/dav/ >/dev/null && exit 0; sleep 2; done; exit 1'
 ExecStartPre=/bin/sh -c 'mkdir -p /mnt/zurg; fusermount3 -uz /mnt/zurg 2>/dev/null || true'
 ExecStart=/usr/bin/rclone mount zurg: /mnt/zurg --config=/etc/rclone/rclone.conf --allow-other --uid=1000 --gid=1000 --umask=002 --dir-cache-time=10s --vfs-cache-mode=full --vfs-cache-max-size=4G --vfs-cache-max-age=24h --buffer-size=64M --attr-timeout=8700h --poll-interval=15s --log-file=/var/log/rclone-zurg.log --log-level=INFO
 ExecStop=/bin/fusermount3 -u /mnt/zurg
