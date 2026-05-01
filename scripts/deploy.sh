@@ -1,61 +1,42 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bulletproof-mediastack — single-script deploy
+# bulletproof-mediastack — single-script native deploy
 #
-# One privileged Proxmox LXC (CT-300 default) running everything natively.
+# Architecture (verified against rivenmedia/riven upstream Dockerfile + entrypoint
+# + pyproject.toml + .env.example, rivenmedia/riven-frontend Dockerfile):
 #
-# Media path (request → watch in ~30-60 sec):
-#   • zurg              — Real-Debrid → WebDAV at 127.0.0.1:9999
-#   • rclone-zurg       — mounts zurg at /mnt/zurg (with healthcheck timer)
-#   • Riven backend     — request UI scraper, 127.0.0.1:8080 (LAN-internal)
-#   • Riven frontend    — user-facing UI on :3000
-#   • Jellyfin          — playback on :8096 (real-time monitor of /mnt/library)
+#   CT-300 (privileged Proxmox LXC, Debian 12)
+#   ├── PostgreSQL 15           — db=riven, user=postgres, pw=postgres   :5432
+#   ├── Riven backend           — Python 3.13 (uv) + built-in FUSE VFS   :8080
+#   │      └── mounts /mount via RivenVFS (replaces zurg+rclone entirely)
+#   ├── Riven frontend          — SvelteKit (Node 24 + pnpm)             :3000
+#   ├── Jellyfin                — reads /mount, real-time monitor on     :8096
+#   ├── Caddy                   — reverse proxy, internal TLS            :80/:443
+#   ├── CrowdSec                — host IDS scanning systemd journal
+#   └── Tailscale (opt-in)      — set TAILSCALE_AUTHKEY to enable
 #
-# Integrated infrastructure (replaces standalone CT-100…107/275):
-#   • PostgreSQL        — Riven DB and any future service DB, :5432 localhost
-#   • Valkey (Redis)    — cache for Riven, :6379 localhost
-#   • Caddy             — reverse proxy on :80/:443 with auto-TLS (self-signed
-#                         for *.mediastack.lan; trusted internal CA)
-#   • CrowdSec          — host IDS scanning systemd journal
-#   • Homarr            — dashboard on :7575 with bookmarks for every service
-#   • Tailscale (opt-in)— mesh VPN for remote access (set TAILSCALE_AUTHKEY)
+# Everything native systemd. No Docker. No Podman. No zurg. No rclone-mount.
 #
-# Not included (intentionally):
-#   • No qBittorrent / RDT-Client — Riven talks to Real-Debrid directly
-#   • No Sonarr / Radarr / Prowlarr / Bazarr / Jellyseerr — Riven covers all
-#   • No FlareSolverr / Byparr — Riven uses RD-cache-aware scraper APIs
-#     (Torrentio, Knightcrawler, Mediafusion). No Cloudflare challenges,
-#     no Chromium sandbox. The "browser bypass" failure class is gone.
-#   • No /mnt/media on disk — files live on Real-Debrid, mounted via rclone.
-#
-# REQUIREMENTS (provide via env or .env file in repo root):
-#   RD_API_TOKEN          Real-Debrid API token (real-debrid.com/apitoken)
+# REQUIREMENTS (.env or env):
+#   RD_API_TOKEN          Real-Debrid API token
 #   TZ                    timezone, default America/New_York
+#   TAILSCALE_AUTHKEY     optional; enables Tailscale on this CT
 #
 # Run on Proxmox host (Tiamat) as root:
 #   bash /opt/bulletproof-mediastack/scripts/deploy.sh
 #
-# Env overrides (defaults shown):
-#   CTID=300                       container ID
-#   CT_HOSTNAME=mediastack
-#   IP=192.168.12.30/24
-#   GATEWAY=192.168.12.1
-#   STORAGE=local-lvm              Proxmox storage pool for rootfs
-#   ROOTFS_GB=24
-#   RAM_MB=8192                    fits Riven + PG + Jellyfin + dashboard
-#   CORES=6
-#   TEMPLATE=local:vztmpl/debian-12-standard_12.12-1_amd64.tar.zst
-#   FORCE_RECREATE=0               1 = wipe existing CT-300 first
-#   TAILSCALE_AUTHKEY=             optional, enables Tailscale on this CT
+# Env overrides:
+#   CTID=300, CT_HOSTNAME=mediastack, IP=192.168.12.30/24,
+#   GATEWAY=192.168.12.1, STORAGE=local-ssd, ROOTFS_GB=24, RAM_MB=8192,
+#   CORES=6, FORCE_RECREATE=0
 # =============================================================================
 set -Eeuo pipefail
 
 CTID="${CTID:-300}"
-# NOTE: bash's built-in $HOSTNAME shadows our default; use a non-conflicting var.
 CT_HOSTNAME="${CT_HOSTNAME:-mediastack}"
 IP="${IP:-192.168.12.30/24}"
 GATEWAY="${GATEWAY:-192.168.12.1}"
-STORAGE="${STORAGE:-local-lvm}"
+STORAGE="${STORAGE:-local-ssd}"
 ROOTFS_GB="${ROOTFS_GB:-24}"
 RAM_MB="${RAM_MB:-8192}"
 CORES="${CORES:-6}"
@@ -66,44 +47,49 @@ BRIDGE="${BRIDGE:-vmbr0}"
 FORCE_RECREATE="${FORCE_RECREATE:-0}"
 TAILSCALE_AUTHKEY="${TAILSCALE_AUTHKEY:-}"
 
-# Optional .env in repo root
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if [ -r "${SCRIPT_DIR}/../.env" ]; then
-  # shellcheck disable=SC1091
-  set -a; source "${SCRIPT_DIR}/../.env"; set +a
-fi
+[ -r "${SCRIPT_DIR}/../.env" ] && { set -a; . "${SCRIPT_DIR}/../.env"; set +a; }
 
-: "${RD_API_TOKEN:?Real-Debrid API token required. Set RD_API_TOKEN in env or .env}"
+: "${RD_API_TOKEN:?RD_API_TOKEN required (real-debrid.com/apitoken). Put it in .env}"
 
-info()  { printf '\033[1;36m[INFO]\033[0m  %s\n' "$*"; }
-ok()    { printf '\033[1;32m[OK]\033[0m    %s\n' "$*"; }
-warn()  { printf '\033[1;33m[WARN]\033[0m  %s\n' "$*"; }
-err()   { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; }
-step()  { printf '\n\033[1;35m── %s ──\033[0m\n' "$*"; }
+info() { printf '\033[1;36m[INFO]\033[0m  %s\n' "$*"; }
+ok()   { printf '\033[1;32m[OK]\033[0m    %s\n' "$*"; }
+warn() { printf '\033[1;33m[WARN]\033[0m  %s\n' "$*"; }
+err()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; }
+step() { printf '\n\033[1;35m── %s ──\033[0m\n' "$*"; }
 
 [ "$(id -u)" -eq 0 ] || { err "Must run as root on Proxmox host."; exit 1; }
 command -v pct >/dev/null 2>&1 || { err "pct not found. Run on a Proxmox host."; exit 1; }
 
-step "Bulletproof deploy → CT-${CTID} (${CT_HOSTNAME})"
+# Generate a stable 32-char API key (idempotent; reused on re-run)
+API_KEY_FILE="/etc/bulletproof-mediastack-api-key"
+if [ ! -s "$API_KEY_FILE" ]; then
+  head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32 >"$API_KEY_FILE"
+  chmod 0600 "$API_KEY_FILE"
+fi
+RIVEN_API_KEY=$(cat "$API_KEY_FILE")
 
-# ── 0. Ensure Debian 12 template ─────────────────────────────────────────────
+step "bulletproof-mediastack → CT-${CTID} (${CT_HOSTNAME})"
+
+# ── 0. Template ──────────────────────────────────────────────────────────────
 if ! pveam list local 2>/dev/null | grep -q 'debian-12-standard'; then
   info "Downloading Debian 12 template ..."
   pveam update >/dev/null 2>&1 || true
   pveam download local debian-12-standard_12.12-1_amd64.tar.zst >/dev/null
 fi
 
-# ── 1. (Re)create privileged CT ──────────────────────────────────────────────
+# ── 1. Create CT (privileged) ────────────────────────────────────────────────
 if [ "$FORCE_RECREATE" = "1" ] && pct status "$CTID" >/dev/null 2>&1; then
   info "FORCE_RECREATE=1 — destroying CT-${CTID} ..."
   pct stop "$CTID" >/dev/null 2>&1 || true
+  pct unlock "$CTID" 2>/dev/null || true
   pct destroy "$CTID" --purge 1 --destroy-unreferenced-disks 1 >/dev/null
 fi
 
 if pct status "$CTID" >/dev/null 2>&1; then
-  info "CT-${CTID} already exists — skipping create."
+  info "CT-${CTID} exists — reusing."
 else
-  info "Creating privileged CT-${CTID} (${CORES}c/${RAM_MB}M/${ROOTFS_GB}G) ..."
+  info "Creating privileged CT-${CTID} (${CORES}c/${RAM_MB}M/${ROOTFS_GB}G) on ${STORAGE} ..."
   pct create "$CTID" "$TEMPLATE" \
     --hostname "$CT_HOSTNAME" \
     --cores "$CORES" --memory "$RAM_MB" --swap "$((RAM_MB/2))" \
@@ -112,12 +98,11 @@ else
     --storage "$STORAGE" --rootfs "${STORAGE}:${ROOTFS_GB}" \
     --unprivileged 0 \
     --features "nesting=1,keyctl=1,fuse=1" \
-    --onboot 1 \
-    --start 0 >/dev/null
-  ok "CT-${CTID} created (privileged)."
+    --onboot 1 --start 0 >/dev/null
+  ok "CT-${CTID} created."
 fi
 
-# ── 2. Add /dev/dri (VAAPI), /dev/fuse (rclone), TUN (Tailscale) ─────────────
+# ── 2. LXC config: /dev/fuse, /dev/dri (VAAPI), /dev/net/tun (Tailscale) ────
 CONF="/etc/pve/lxc/${CTID}.conf"
 add_line() { grep -qxF "$1" "$CONF" || echo "$1" >>"$CONF"; }
 add_line "lxc.cgroup2.devices.allow: c 226:0 rwm"
@@ -128,74 +113,106 @@ add_line "lxc.mount.entry: /dev/fuse dev/fuse none bind,create=file"
 add_line "lxc.cgroup2.devices.allow: c 10:200 rwm"
 add_line "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file"
 add_line "lxc.apparmor.profile: unconfined"
+add_line "lxc.cap.drop:"
 
-# ── 3. Start CT ──────────────────────────────────────────────────────────────
+# ── 3. Start CT and wait for network ─────────────────────────────────────────
 if [ "$(pct status "$CTID" 2>/dev/null | awk '{print $2}')" != "running" ]; then
   pct start "$CTID" >/dev/null
-  sleep 6
 fi
-for _ in $(seq 1 60); do
+for i in $(seq 1 90); do
   pct exec "$CTID" -- true 2>/dev/null && break
   sleep 1
 done
+pct exec "$CTID" -- true 2>/dev/null || { err "CT-${CTID} did not come up"; exit 1; }
+# Wait for DNS to resolve (network propagation can take a moment after start)
+for i in $(seq 1 60); do
+  pct exec "$CTID" -- getent hosts deb.debian.org >/dev/null 2>&1 && break
+  sleep 2
+done
+ok "CT-${CTID} is up with networking."
 
-# ── 4. Bootstrap inside CT: repos + base packages + users ────────────────────
-info "Bootstrapping packages and APT repos in CT-${CTID} ..."
-pct exec "$CTID" -- bash <<'BOOT'
+# ── 4. Bootstrap CT: apt repos + base packages + service users + FUSE ────────
+info "Bootstrapping packages and APT repos ..."
+pct exec "$CTID" -- env RD_API_TOKEN="$RD_API_TOKEN" RIVEN_API_KEY="$RIVEN_API_KEY" TZ="$TZ" bash <<'BOOT'
 set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
+
+# Retry apt-get update up to 3x in case a mirror is briefly slow
+for i in 1 2 3; do apt-get update -qq && break || sleep 5; done
+
+# Riven backend build deps (mirror upstream Alpine deps to Debian) +
+# runtime deps (libpq5, libcurl4, ffmpeg, fuse3, libcap2-bin for setcap) +
+# common utilities. NodeSource installs Node24 -> "nodejs" (includes npm).
 apt-get install -y --no-install-recommends -qq \
-  ca-certificates curl wget gnupg lsb-release apt-transport-https \
-  python3 python3-pip python3-venv \
-  git jq sqlite3 fuse3 \
-  tzdata cron \
-  postgresql postgresql-contrib \
+  ca-certificates curl wget gnupg jq lsb-release apt-transport-https \
+  python3 python3-venv python3-dev python3-pip \
+  build-essential pkg-config libffi-dev libssl-dev \
+  libcurl4-openssl-dev libcurl4 libpq5 libpq-dev libfuse3-dev fuse3 libcap2-bin \
+  ffmpeg unzip git sqlite3 \
+  postgresql postgresql-contrib postgresql-client \
   redis-server redis-tools \
-  nodejs npm \
+  tzdata cron \
   debian-keyring debian-archive-keyring
 
-# Real-Debrid reachable?
-curl -fsS https://api.real-debrid.com >/dev/null || { echo "no internet to RD"; exit 1; }
+# Verify outbound network reaches services we depend on
+for url in https://api.real-debrid.com https://github.com https://repo.jellyfin.org https://deb.nodesource.com; do
+  curl -fsS --max-time 10 "$url" >/dev/null || { echo "ERR: cannot reach $url"; exit 1; }
+done
 
 install -d /usr/share/keyrings /etc/apt/sources.list.d
 
-# Jellyfin repo (idempotent: rm + dearmor with --batch --yes for re-runs)
+# Jellyfin repo (idempotent)
 rm -f /usr/share/keyrings/jellyfin.gpg
 curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
   | gpg --batch --yes --dearmor -o /usr/share/keyrings/jellyfin.gpg
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/jellyfin.gpg] https://repo.jellyfin.org/master/debian bookworm main" \
   >/etc/apt/sources.list.d/jellyfin.list
 
-# Caddy repo (official)
+# Caddy repo (Cloudsmith)
 rm -f /usr/share/keyrings/caddy.gpg
 curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key \
   | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy.gpg
 echo "deb [signed-by=/usr/share/keyrings/caddy.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
   >/etc/apt/sources.list.d/caddy.list
 
-# CrowdSec repo (official)
-curl -fsSL https://install.crowdsec.net | bash >/dev/null 2>&1 || true
+# NodeSource Node 24 (matches rivenmedia/riven-frontend Dockerfile)
+rm -f /usr/share/keyrings/nodesource.gpg
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+  | gpg --batch --yes --dearmor -o /usr/share/keyrings/nodesource.gpg
+echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" \
+  >/etc/apt/sources.list.d/nodesource.list
 
-# rclone — official .deb (newer than apt)
-RCLONE_URL=$(curl -fsSL https://api.github.com/repos/rclone/rclone/releases/latest \
-  | jq -r '.assets[] | select(.name|test("amd64\\.deb$")) | .browser_download_url' | head -1)
-curl -fsSL "$RCLONE_URL" -o /tmp/rclone.deb
-apt-get install -y /tmp/rclone.deb
-rm /tmp/rclone.deb
+# CrowdSec repo (their bootstrap script just adds the apt repo)
+curl -fsSL https://install.crowdsec.net | bash
 
 apt-get update -qq
 apt-get install -y --no-install-recommends -qq \
   jellyfin jellyfin-ffmpeg7 \
   caddy \
+  nodejs \
   crowdsec crowdsec-firewall-bouncer-iptables
 
-# Service users
+# Verify Node 24 (frontend's package.json declares @types/node ^25, build needs >=20)
+NODE_MAJOR=$(node -v 2>/dev/null | sed 's/^v\([0-9]*\).*/\1/')
+[ -n "$NODE_MAJOR" ] && [ "$NODE_MAJOR" -ge 20 ] || { echo "ERR: Node >=20 required, got: $(node -v 2>&1)"; exit 1; }
+echo "Node $(node -v), npm $(npm -v)"
+
+# pnpm globally (frontend uses pnpm@10.28.0; their Dockerfile does npm i -g pnpm)
+npm install -g pnpm@10.28.0
+
+# uv (project Python/dep manager — Riven's pyproject is uv-native)
+UV_URL=$(curl -fsSL https://api.github.com/repos/astral-sh/uv/releases/latest \
+  | jq -r '.assets[] | select(.name=="uv-x86_64-unknown-linux-gnu.tar.gz") | .browser_download_url' | head -1)
+[ -n "$UV_URL" ] || { echo "ERR: uv release URL empty"; exit 1; }
+curl -fsSL "$UV_URL" -o /tmp/uv.tar.gz
+tar -xzf /tmp/uv.tar.gz -C /tmp
+install -m 0755 /tmp/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/uv
+install -m 0755 /tmp/uv-x86_64-unknown-linux-gnu/uvx /usr/local/bin/uvx 2>/dev/null || true
+rm -rf /tmp/uv.tar.gz /tmp/uv-x86_64-unknown-linux-gnu
+
+# Service users (riven runs as 1000:1000 to match Jellyfin reading /mount)
 getent group media >/dev/null || groupadd -g 1000 media
-id -u zurg     >/dev/null 2>&1 || useradd -r -m -d /var/lib/zurg     -s /usr/sbin/nologin -g media zurg
-id -u rclone   >/dev/null 2>&1 || useradd -r -m -d /var/lib/rclone   -s /usr/sbin/nologin -g media rclone
-id -u riven    >/dev/null 2>&1 || useradd -r -m -d /var/lib/riven    -s /usr/sbin/nologin -g media riven
-id -u homarr   >/dev/null 2>&1 || useradd -r -m -d /var/lib/homarr   -s /usr/sbin/nologin -g media homarr
+id -u riven >/dev/null 2>&1 || useradd -r -m -d /var/lib/riven -s /bin/bash -u 1000 -g 1000 riven
 usermod -aG media jellyfin
 
 # Jellyfin VAAPI groups
@@ -203,267 +220,144 @@ groupadd -g 993 render 2>/dev/null || groupmod -g 993 render
 groupadd -g 44  video  2>/dev/null || groupmod -g 44  video
 usermod -aG video,render jellyfin
 
-# Allow non-root mount via fuse
-echo 'user_allow_other' >/etc/fuse.conf
+# FUSE: allow non-root with --allow-other
+sed -i 's/^#\s*user_allow_other/user_allow_other/' /etc/fuse.conf
+grep -q '^user_allow_other' /etc/fuse.conf || echo 'user_allow_other' >>/etc/fuse.conf
 
-# Redis: localhost only, lower memory
+# fusermount3 setuid (allows non-root user-space mount/unmount)
+chmod u+s /usr/bin/fusermount3 2>/dev/null || true
+
+# Redis: localhost only, modest cache
 sed -i 's/^bind .*/bind 127.0.0.1 -::1/' /etc/redis/redis.conf
 sed -i 's/^# *maxmemory .*/maxmemory 256mb/' /etc/redis/redis.conf
 sed -i 's/^# *maxmemory-policy .*/maxmemory-policy allkeys-lru/' /etc/redis/redis.conf
 systemctl enable --now redis-server
-BOOT
-ok "Base packages + repos installed."
 
-# ── 5. zurg ───────────────────────────────────────────────────────────────────────────
-info "Installing zurg (Real-Debrid WebDAV) ..."
-pct exec "$CTID" -- bash <<'ZURG'
-set -Eeuo pipefail
-apt-get install -y --no-install-recommends -qq unzip
-ZURG_URL=$(curl -fsSL https://api.github.com/repos/debridmediamanager/zurg-testing/releases/latest \
-  | jq -r '.assets[] | select(.name|test("linux-amd64\\.zip$")) | .browser_download_url' | head -1)
-if [ -z "$ZURG_URL" ]; then echo "ERR: no zurg linux-amd64.zip asset found"; exit 1; fi
-echo "Downloading $ZURG_URL"
-curl -fsSL "$ZURG_URL" -o /tmp/zurg.zip
-unzip -oq /tmp/zurg.zip -d /tmp/zurg-unzip
-# Asset contains a single 'zurg' binary at the top level
-install -m 0755 /tmp/zurg-unzip/zurg /usr/local/bin/zurg
-rm -rf /tmp/zurg.zip /tmp/zurg-unzip
-mkdir -p /etc/zurg /var/lib/zurg
-chown -R zurg:media /etc/zurg /var/lib/zurg
-ZURG
-
-pct exec "$CTID" -- bash -c "cat >/etc/zurg/config.yml <<CFG
-zurg: v1
-token: ${RD_API_TOKEN}
-host: 127.0.0.1
-port: 9999
-concurrent_workers: 32
-check_for_changes_every_secs: 10
-ignore_renames: true
-retain_rd_torrent_name: true
-retain_folder_name_extension: false
-enable_repair: true
-auto_delete_rar_torrents: true
-api_rate_limit_per_minute: 60
-torrents_rate_limit_per_minute: 25
-serve_from_rclone: false
-verify_download_link: true
-network_buffer_size: 4194304
-directories:
-  shows:
-    group_order: 10
-    group: media
-    filters:
-      - regex: /\\\\bs\\\\d+(e\\\\d+)?\\\\b/i
-      - regex: /\\\\b(season|episode)\\\\b/i
-  movies:
-    group_order: 20
-    group: media
-    only_show_the_biggest_file: true
-    filters:
-      - regex: /.*/
-CFG
-chown zurg:media /etc/zurg/config.yml
-chmod 0640 /etc/zurg/config.yml"
-
-pct exec "$CTID" -- bash <<'ZUNIT'
-cat >/etc/systemd/system/zurg.service <<'UNIT'
-[Unit]
-Description=Zurg (Real-Debrid WebDAV)
-After=network-online.target
-Wants=network-online.target
-Before=rclone-zurg.service
-
-[Service]
-Type=simple
-User=zurg
-Group=media
-WorkingDirectory=/var/lib/zurg
-ExecStart=/usr/local/bin/zurg --config /etc/zurg/config.yml
-Restart=always
-RestartSec=5
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectHome=yes
-ProtectSystem=strict
-ReadWritePaths=/var/lib/zurg /etc/zurg
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-systemctl daemon-reload && systemctl enable --now zurg
-ZUNIT
-ok "zurg → 127.0.0.1:9999"
-
-# ── 6. rclone mount + healthcheck timer ──────────────────────────────────────
-info "Configuring rclone mount of zurg → /mnt/zurg + healthcheck ..."
-pct exec "$CTID" -- bash <<'RC'
-set -Eeuo pipefail
-mkdir -p /etc/rclone /mnt/zurg
-chown rclone:media /mnt/zurg
-chmod 0775 /mnt/zurg
-# Pre-create log files (rclone runs as root, but ensure files exist + chown
-# to media so health check + non-root readers can tail them)
-touch /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
-chown root:media /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
-chmod 0644 /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
-# Ensure fusermount3 has setuid bit (required so rclone can use --allow-other)
-chmod u+s /usr/bin/fusermount3 2>/dev/null || true
-cat >/etc/rclone/rclone.conf <<'CFG'
-[zurg]
-type = webdav
-url = http://127.0.0.1:9999/dav/
-vendor = other
-pacer_min_sleep = 0
-CFG
-chown rclone:media /etc/rclone/rclone.conf
-chmod 0640 /etc/rclone/rclone.conf
-
-cat >/etc/systemd/system/rclone-zurg.service <<'UNIT'
-[Unit]
-Description=rclone mount: zurg WebDAV -> /mnt/zurg
-After=zurg.service network-online.target
-Requires=zurg.service
-Before=jellyfin.service riven.service
-
-[Service]
-Type=notify
-# Run as root: privileged LXC + FUSE mount with --allow-other requires it.
-# The mount itself uses --uid=1000 --gid=1000 so the files are owned by media.
-User=root
-ExecStartPre=/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:9999/dav/ >/dev/null && exit 0; sleep 2; done; exit 1'
-ExecStartPre=/bin/sh -c 'mkdir -p /mnt/zurg; fusermount3 -uz /mnt/zurg 2>/dev/null || true'
-ExecStart=/usr/bin/rclone mount zurg: /mnt/zurg --config=/etc/rclone/rclone.conf --allow-other --uid=1000 --gid=1000 --umask=002 --dir-cache-time=10s --vfs-cache-mode=full --vfs-cache-max-size=4G --vfs-cache-max-age=24h --buffer-size=64M --attr-timeout=8700h --poll-interval=15s --log-file=/var/log/rclone-zurg.log --log-level=INFO
-ExecStop=/bin/fusermount3 -u /mnt/zurg
-Restart=on-failure
-RestartSec=10
-LimitNOFILE=65536
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-cat >/usr/local/bin/rclone-zurg-health.sh <<'HEALTH'
-#!/bin/bash
-set -euo pipefail
-MOUNT=/mnt/zurg
-LOG=/var/log/rclone-zurg-health.log
-log() { echo "$(date -Iseconds) $*" >>"$LOG"; }
-if ! mountpoint -q "$MOUNT"; then
-  log "NOT_MOUNTED -> restart"
-  systemctl restart rclone-zurg.service
-  exit 1
-fi
-if ! timeout 8 ls "$MOUNT" >/dev/null 2>&1; then
-  log "LS_HUNG -> restart"
-  systemctl restart rclone-zurg.service
-  exit 1
-fi
-log ok
-HEALTH
-chmod +x /usr/local/bin/rclone-zurg-health.sh
-
-cat >/etc/systemd/system/rclone-zurg-health.service <<'UNIT'
-[Unit]
-Description=rclone mount healthcheck
-After=rclone-zurg.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/rclone-zurg-health.sh
-UNIT
-
-cat >/etc/systemd/system/rclone-zurg-health.timer <<'UNIT'
-[Unit]
-Description=Run rclone-zurg healthcheck every minute
-
-[Timer]
-OnBootSec=60
-OnUnitActiveSec=60
-AccuracySec=5s
-
-[Install]
-WantedBy=timers.target
-UNIT
-
-systemctl daemon-reload
-systemctl enable --now rclone-zurg rclone-zurg-health.timer
-RC
-ok "rclone mount + 60s healthcheck timer active."
-
-# ── 7. PostgreSQL + Riven ────────────────────────────────────────────────────
-info "Installing Riven backend + frontend ..."
-pct exec "$CTID" -- bash <<'RIVEN'
-set -Eeuo pipefail
-# Allow root to operate on repos owned by service users (riven, homarr).
-# Without this, git refuses with 'dubious ownership' on re-runs.
+# Allow root inside CT to operate on git repos owned by service users
 git config --system --add safe.directory '*'
+BOOT
+ok "Base packages, repos, users, FUSE, Redis ready."
+
+# ── 5. PostgreSQL: db=riven, user=postgres with password ─────────────────────
+info "Configuring PostgreSQL ..."
+pct exec "$CTID" -- bash <<'PG'
+set -Eeuo pipefail
 systemctl enable --now postgresql
-runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='riven'" | grep -q 1 || \
-  runuser -u postgres -- psql <<SQL
-CREATE USER riven WITH PASSWORD 'riven';
-CREATE DATABASE riven OWNER riven;
-SQL
 
-git clone https://github.com/rivenmedia/riven.git /opt/riven 2>/dev/null || git -C /opt/riven pull
+# Set postgres role password (default Debian peer-only auth has no password)
+runuser -u postgres -- psql -tAc "ALTER USER postgres WITH PASSWORD 'postgres';" >/dev/null
+
+# Create riven DB if missing
+runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='riven'" \
+  | grep -q 1 || runuser -u postgres -- psql -tAc "CREATE DATABASE riven OWNER postgres;" >/dev/null
+
+# Verify TCP-localhost auth works (matches Riven's DSN)
+PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d riven -tAc 'SELECT 1' >/dev/null
+PG
+ok "PostgreSQL ready (db=riven, user=postgres@127.0.0.1)."
+
+# ── 6. Riven backend ─────────────────────────────────────────────────────────
+info "Installing Riven backend (Python 3.13 via uv, native FUSE VFS) ..."
+pct exec "$CTID" -- bash <<'RIVEN_BACKEND'
+set -Eeuo pipefail
+
+git -C /opt/riven pull 2>/dev/null \
+  || git clone https://github.com/rivenmedia/riven.git /opt/riven
 chown -R riven:media /opt/riven
-# We're already root in the CT (pct exec). runuser cleanly drops to the
-# riven user with its real HOME, no PAM session, no "cannot cd /root" noise.
+
+# Install Python 3.13 + venv as the riven user (uv stores under its $HOME/.local)
 runuser -u riven -- bash -c '
   set -Eeuo pipefail
+  export UV_PYTHON_INSTALL_DIR=/var/lib/riven/.uv-python
+  export UV_CACHE_DIR=/var/lib/riven/.uv-cache
   cd /opt/riven
-  python3 -m venv .venv
-  .venv/bin/pip install --quiet --upgrade pip poetry
-  .venv/bin/poetry install --no-root --quiet
+  /usr/local/bin/uv python install 3.13
+  rm -rf .venv
+  /usr/local/bin/uv venv --python 3.13 .venv
+  # Riven pyproject is uv-native (has [tool.uv]). uv sync handles everything,
+  # uses uv.lock if present (--frozen). --no-dev skips dev/test groups.
+  if [ -f uv.lock ]; then
+    /usr/local/bin/uv sync --no-dev --frozen
+  else
+    /usr/local/bin/uv sync --no-dev
+  fi
 '
 
-git clone https://github.com/rivenmedia/riven-frontend.git /opt/riven-frontend 2>/dev/null || git -C /opt/riven-frontend pull
-chown -R riven:media /opt/riven-frontend
-runuser -u riven -- bash -c '
-  set -Eeuo pipefail
-  cd /opt/riven-frontend
-  npm install --silent
-  npm run build --silent
-'
+# RivenVFS uses pyfuse3 which needs CAP_SYS_ADMIN to mount FUSE.
+# setcap on the venv python binary (mirrors upstream Dockerfile).
+PY_BIN=$(readlink -f /opt/riven/.venv/bin/python)
+setcap cap_sys_admin+ep "$PY_BIN"
+getcap "$PY_BIN" | grep -q cap_sys_admin || { echo "ERR: setcap failed on $PY_BIN"; exit 1; }
 
-mkdir -p /mnt/library/movies /mnt/library/shows
-chown -R riven:media /mnt/library
-chmod -R 0775 /mnt/library
+# Mount point for RivenVFS
+mkdir -p /mount
+chown riven:media /mount
+chmod 0775 /mount
+RIVEN_BACKEND
+ok "Riven backend installed."
 
-cat >/etc/systemd/system/riven.service <<'UNIT'
+# Riven systemd unit (env-driven via RIVEN_FORCE_ENV=true)
+pct exec "$CTID" -- bash -c "cat >/etc/systemd/system/riven.service <<UNIT
 [Unit]
-Description=Riven backend
-After=network-online.target rclone-zurg.service postgresql.service redis-server.service
-Requires=rclone-zurg.service postgresql.service
+Description=Riven backend (request UI + RivenVFS)
+After=network-online.target postgresql.service redis-server.service
+Requires=postgresql.service
 
 [Service]
 Type=simple
 User=riven
 Group=media
 WorkingDirectory=/opt/riven
-Environment="RIVEN_RD_API_KEY=__RD_API_TOKEN__"
-Environment="RIVEN_DATABASE_HOST=postgresql+psycopg2://riven:riven@127.0.0.1/riven"
-Environment="RIVEN_FORCE_REFRESH_LIBRARY=true"
-Environment="RIVEN_SYMLINK_LIBRARY_PATH=/mnt/library"
-Environment="RIVEN_SYMLINK_RCLONE_PATH=/mnt/zurg"
-Environment="RIVEN_LOG=true"
-Environment="RIVEN_HOST=127.0.0.1"
-Environment="RIVEN_PORT=8080"
-ExecStart=/opt/riven/.venv/bin/python -m src.main
+Environment=PATH=/opt/riven/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=/var/lib/riven
+Environment=UV_PYTHON_INSTALL_DIR=/var/lib/riven/.uv-python
+Environment=UV_CACHE_DIR=/var/lib/riven/.uv-cache
+Environment=RIVEN_FORCE_ENV=true
+Environment=API_KEY=${RIVEN_API_KEY}
+Environment=RIVEN_DATABASE_HOST=postgresql+psycopg2://postgres:postgres@127.0.0.1/riven
+Environment=RIVEN_FILESYSTEM_MOUNT_PATH=/mount
+Environment=RIVEN_LIBRARY_PATH=/mount
+Environment=RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED=true
+Environment=RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY=${RD_API_TOKEN}
+Environment=RIVEN_SCRAPING_TORRENTIO_ENABLED=true
+Environment=RIVEN_JELLYFIN_ENABLED=true
+Environment=RIVEN_JELLYFIN_URL=http://127.0.0.1:8096
+ExecStart=/opt/riven/.venv/bin/python src/main.py
 Restart=on-failure
-RestartSec=5
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ReadWritePaths=/mnt/library /opt/riven /var/lib/riven /tmp
+RestartSec=10
+LimitNOFILE=65536
+# AmbientCapabilities preserved when User= drops privileges
+AmbientCapabilities=CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_NET_BIND_SERVICE CAP_DAC_OVERRIDE CAP_CHOWN CAP_SETUID CAP_SETGID
 
 [Install]
 WantedBy=multi-user.target
-UNIT
+UNIT"
 
-cat >/etc/systemd/system/riven-frontend.service <<'UNIT'
+# ── 7. Riven frontend (SvelteKit + Node + pnpm) ──────────────────────────────
+info "Installing Riven frontend (Node 24 + pnpm) ..."
+pct exec "$CTID" -- bash <<'RIVEN_FRONTEND'
+set -Eeuo pipefail
+
+git -C /opt/riven-frontend pull 2>/dev/null \
+  || git clone https://github.com/rivenmedia/riven-frontend.git /opt/riven-frontend
+chown -R riven:media /opt/riven-frontend
+
+runuser -u riven -- bash -c '
+  set -Eeuo pipefail
+  cd /opt/riven-frontend
+  # pnpm needs a writable HOME for its store
+  export HOME=/var/lib/riven
+  pnpm install --frozen-lockfile=false
+  pnpm run build
+  pnpm prune --prod
+'
+RIVEN_FRONTEND
+ok "Riven frontend built."
+
+pct exec "$CTID" -- bash -c "cat >/etc/systemd/system/riven-frontend.service <<UNIT
 [Unit]
-Description=Riven frontend
+Description=Riven frontend (SvelteKit)
 After=riven.service
 Requires=riven.service
 
@@ -472,55 +366,31 @@ Type=simple
 User=riven
 Group=media
 WorkingDirectory=/opt/riven-frontend
-Environment="HOST=0.0.0.0"
-Environment="PORT=3000"
-Environment="ORIGIN=http://0.0.0.0:3000"
-Environment="BACKEND_URL=http://127.0.0.1:8080"
-ExecStart=/usr/bin/node build
+Environment=HOME=/var/lib/riven
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=3000
+Environment=ORIGIN=http://${IP%/*}:3000
+Environment=BACKEND_URL=http://127.0.0.1:8080
+ExecStart=/usr/bin/node /opt/riven-frontend/build
 Restart=on-failure
-RestartSec=5
-NoNewPrivileges=yes
-PrivateTmp=yes
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
-UNIT
-RIVEN
+UNIT"
 
-# Splice in the real RD token
-pct exec "$CTID" -- sed -i "s|__RD_API_TOKEN__|${RD_API_TOKEN}|" /etc/systemd/system/riven.service
-pct exec "$CTID" -- bash -c 'systemctl daemon-reload && systemctl enable --now riven riven-frontend'
-ok "Riven backend (127.0.0.1:8080) + frontend (LAN:3000)."
-
-# Nightly Riven DB backup
-info "Installing nightly Riven pg_dump cron (7-day retention) ..."
-pct exec "$CTID" -- bash <<'PGB'
-set -Eeuo pipefail
-mkdir -p /var/backups/riven
-chown postgres:postgres /var/backups/riven
-chmod 0700 /var/backups/riven
-cat >/etc/cron.daily/riven-pgdump <<'CRON'
-#!/bin/bash
-set -euo pipefail
-DIR=/var/backups/riven
-DATE=$(date -u +%Y%m%d)
-runuser -u postgres -- pg_dump -Fc riven > "$DIR/riven-$DATE.pgdump"
-find "$DIR" -name 'riven-*.pgdump' -mtime +7 -delete
-CRON
-chmod 0755 /etc/cron.daily/riven-pgdump
-PGB
-ok "pg_dump cron at /etc/cron.daily/riven-pgdump"
-
-# ── 8. Jellyfin (real-time monitor on /mnt/library) ──────────────────────────
-info "Configuring Jellyfin to scan /mnt/library ..."
+# ── 8. Jellyfin: enable real-time monitor (after first start writes config) ──
+info "Configuring Jellyfin (real-time monitor on /mount) ..."
 pct exec "$CTID" -- bash <<'JF'
 set -Eeuo pipefail
 systemctl enable --now jellyfin
-for _ in $(seq 1 60); do
+# Wait for first-run to write its libraries dir
+for i in $(seq 1 90); do
   [ -d /var/lib/jellyfin/config ] && break
   sleep 2
 done
-LIB_DIR="/var/lib/jellyfin/config/libraries"
+LIB_DIR=/var/lib/jellyfin/config/libraries
 if [ -d "$LIB_DIR" ]; then
   shopt -s nullglob
   for f in "$LIB_DIR"/*/options.xml; do
@@ -533,168 +403,155 @@ if [ -d "$LIB_DIR" ]; then
   systemctl restart jellyfin
 fi
 JF
-ok "Jellyfin :8096 with real-time monitor."
+ok "Jellyfin :8096 configured (real-time monitor)."
 
-# ── 9. Homarr dashboard ──────────────────────────────────────────────────────
-info "Installing Homarr dashboard ..."
-pct exec "$CTID" -- bash <<'HOMARR'
-set -Eeuo pipefail
-git clone https://github.com/ajnart/homarr.git /opt/homarr 2>/dev/null || git -C /opt/homarr pull
-cd /opt/homarr
-npm install --silent --legacy-peer-deps
-npm run build --silent || npm run build:next --silent || true
-chown -R homarr:media /opt/homarr
-
-cat >/etc/systemd/system/homarr.service <<'UNIT'
-[Unit]
-Description=Homarr dashboard
-After=network-online.target
-
-[Service]
-Type=simple
-User=homarr
-Group=media
-WorkingDirectory=/opt/homarr
-Environment="HOSTNAME=0.0.0.0"
-Environment="PORT=7575"
-Environment="NODE_ENV=production"
-ExecStart=/usr/bin/npm run start
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=yes
-PrivateTmp=yes
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-systemctl daemon-reload && systemctl enable --now homarr || true
-HOMARR
-ok "Homarr :7575"
-
-# ── 10. Caddy reverse proxy with auto-TLS ────────────────────────────────────
-info "Configuring Caddy reverse proxy with internal TLS ..."
-pct exec "$CTID" -- bash <<'CADDY'
-set -Eeuo pipefail
-cat >/etc/caddy/Caddyfile <<'CFG'
-# bulletproof-mediastack — Caddy reverse proxy
-# Self-signed TLS via Caddy's internal CA. Add /etc/hosts entries on your
-# clients (192.168.12.30 jellyfin.mediastack.lan riven.mediastack.lan
-# homarr.mediastack.lan) to use these names. Direct IP:port still works.
-
+# ── 9. Caddy reverse proxy (self-signed TLS via internal CA) ─────────────────
+info "Configuring Caddy reverse proxy ..."
+pct exec "$CTID" -- bash -c "cat >/etc/caddy/Caddyfile <<'CFG'
 {
     auto_https disable_redirects
     local_certs
 }
 
-(common_headers) {
+(headers) {
     header {
-        Strict-Transport-Security "max-age=31536000"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "no-referrer-when-downgrade"
+        Strict-Transport-Security \"max-age=31536000\"
+        X-Content-Type-Options \"nosniff\"
+        Referrer-Policy \"no-referrer-when-downgrade\"
         -Server
     }
 }
 
-riven.mediastack.lan, riven.local, http://192.168.12.30 {
+riven.mediastack.lan, riven.local {
     tls internal
-    import common_headers
+    import headers
     reverse_proxy 127.0.0.1:3000
 }
 
 jellyfin.mediastack.lan, jellyfin.local {
     tls internal
-    import common_headers
+    import headers
     reverse_proxy 127.0.0.1:8096
 }
 
-homarr.mediastack.lan, homarr.local {
-    tls internal
-    import common_headers
-    reverse_proxy 127.0.0.1:7575
+http://${IP%/*} {
+    redir / /riven/ permanent
+    handle_path /riven/* {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle_path /jellyfin/* {
+        reverse_proxy 127.0.0.1:8096
+    }
 }
 CFG
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-systemctl enable --now caddy
-CADDY
-ok "Caddy on :80/:443 (Riven default landing page)."
+systemctl enable --now caddy"
+ok "Caddy :80/:443 ready."
 
-# ── 11. CrowdSec ─────────────────────────────────────────────────────────────
+# ── 10. CrowdSec ─────────────────────────────────────────────────────────────
 info "Configuring CrowdSec ..."
 pct exec "$CTID" -- bash <<'CS'
 set -Eeuo pipefail
-# Default install scans systemd journal. Add Caddy + jellyfin acquisition.
+mkdir -p /etc/crowdsec/acquis.d
+cat >/etc/crowdsec/acquis.d/journal.yaml <<'YML'
+source: journalctl
+journalctl_filter:
+  - "_SYSTEMD_UNIT=ssh.service"
+  - "_SYSTEMD_UNIT=jellyfin.service"
+  - "_SYSTEMD_UNIT=riven.service"
+labels:
+  type: syslog
+YML
 cat >/etc/crowdsec/acquis.d/caddy.yaml <<'YML'
 filenames:
   - /var/log/caddy/access.log
 labels:
   type: caddy
 YML
-cat >/etc/crowdsec/acquis.d/journal.yaml <<'YML'
-source: journalctl
-journalctl_filter:
-  - "_SYSTEMD_UNIT=ssh.service"
-  - "_SYSTEMD_UNIT=jellyfin.service"
-labels:
-  type: syslog
-YML
-cscli collections install crowdsecurity/linux crowdsecurity/sshd crowdsecurity/caddy 2>/dev/null || true
+cscli collections install crowdsecurity/linux crowdsecurity/sshd crowdsecurity/caddy 2>&1 | tail -5
 systemctl restart crowdsec
 systemctl enable --now crowdsec crowdsec-firewall-bouncer
 CS
 ok "CrowdSec scanning journal + Caddy access log."
 
-# ── 12. Tailscale (opt-in) ───────────────────────────────────────────────────
+# ── 11. Tailscale (opt-in) ───────────────────────────────────────────────────
 if [ -n "$TAILSCALE_AUTHKEY" ]; then
-  info "Installing Tailscale + bringing up with provided auth key ..."
+  info "Joining Tailscale tailnet ..."
   pct exec "$CTID" -- bash -c "curl -fsSL https://tailscale.com/install.sh | sh"
   pct exec "$CTID" -- tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname "$CT_HOSTNAME" --accept-routes
-  ok "Tailscale up. Get IP: pct exec $CTID -- tailscale ip -4"
+  ok "Tailscale up. IP: $(pct exec "$CTID" -- tailscale ip -4 2>/dev/null | head -1)"
 else
   info "Skipping Tailscale (set TAILSCALE_AUTHKEY to enable)."
 fi
 
-# ── 13. Final summary ────────────────────────────────────────────────────────
+# ── 12. Enable Riven services + verify everything is alive ──────────────────
+info "Starting Riven backend + frontend ..."
+pct exec "$CTID" -- bash -c '
+systemctl daemon-reload
+systemctl enable --now riven riven-frontend
+'
+
+step "Verifying all services are active"
+SERVICES="postgresql redis-server jellyfin caddy crowdsec crowdsec-firewall-bouncer riven riven-frontend"
+[ -n "$TAILSCALE_AUTHKEY" ] && SERVICES="$SERVICES tailscaled"
+ALL_OK=1
+sleep 5  # give services a moment to settle
+for svc in $SERVICES; do
+  state=$(pct exec "$CTID" -- systemctl is-active "$svc" 2>&1)
+  if [ "$state" = "active" ]; then
+    ok "  $svc: active"
+  else
+    err "  $svc: $state"
+    pct exec "$CTID" -- journalctl -xeu "$svc" --no-pager 2>&1 | tail -8 | sed 's/^/    | /'
+    ALL_OK=0
+  fi
+done
+
+# ── 13. Summary ──────────────────────────────────────────────────────────────
 IP_ONLY="${IP%/*}"
 cat <<EOF
 
 ============================================================
-  bulletproof-mediastack — deployed in CT-${CTID} (${CT_HOSTNAME})
+  bulletproof-mediastack — CT-${CTID} (${CT_HOSTNAME})
 ============================================================
   Direct (LAN, http):
     Riven UI       http://${IP_ONLY}:3000   ← request shows/movies here
     Jellyfin       http://${IP_ONLY}:8096   ← watch here
-    Homarr         http://${IP_ONLY}:7575   ← dashboard
+    Riven API      http://${IP_ONLY}:8080   (used internally by frontend)
 
-  Via Caddy (https, self-signed; add to /etc/hosts on viewing devices):
-    192.168.12.30 riven.mediastack.lan jellyfin.mediastack.lan homarr.mediastack.lan
+  Caddy (https, self-signed; add to /etc/hosts on viewing devices):
+    ${IP_ONLY} riven.mediastack.lan jellyfin.mediastack.lan
     https://riven.mediastack.lan
     https://jellyfin.mediastack.lan
-    https://homarr.mediastack.lan
 
   Internal:
-    zurg WebDAV   http://127.0.0.1:9999/dav (in CT)
-    rclone mount  /mnt/zurg
-    Library tree  /mnt/library  (symlinks created by Riven)
-    PostgreSQL    127.0.0.1:5432
-    Valkey/Redis  127.0.0.1:6379
+    PostgreSQL    127.0.0.1:5432  (db=riven user=postgres pw=postgres)
+    Redis/Valkey  127.0.0.1:6379
+    Riven VFS     /mount (FUSE — provided by Riven backend itself)
 
-  Reliability:
-    rclone health timer       systemctl status rclone-zurg-health.timer
-    Riven DB nightly pg_dump  /etc/cron.daily/riven-pgdump → /var/backups/riven
-    CrowdSec IDS              cscli alerts list
-    Caddy self-signed TLS     /var/lib/caddy/.local/share/caddy/pki/
+  Riven API key: ${RIVEN_API_KEY}
+                 (also stored at /etc/bulletproof-mediastack-api-key on Tiamat)
 
-  Services in CT-${CTID}:
-    systemctl status zurg rclone-zurg riven riven-frontend jellyfin \\
-                     homarr caddy crowdsec postgresql redis-server
+  Logs:
+    pct exec ${CTID} -- journalctl -fu riven
+    pct exec ${CTID} -- journalctl -fu riven-frontend
+    pct exec ${CTID} -- journalctl -fu jellyfin
 
   First-run setup:
-    1. Open http://${IP_ONLY}:3000 → Riven first-run wizard.
+    1. Open http://${IP_ONLY}:3000 → finish Riven onboarding (RD token already
+       configured via env). Confirm a content source (Trakt list, Mdblist) or
+       just add a single show to test the chain.
     2. In Jellyfin (http://${IP_ONLY}:8096): add libraries pointing at
-         /mnt/library/movies   (Movies)
-         /mnt/library/shows    (TV Shows)
-    3. Add a show in Riven → it appears in Jellyfin within ~30-60 seconds.
+         /mount/movies   (Movies)
+         /mount/shows    (TV Shows)
+       (Real-time monitor is already enabled.)
+    3. Add a show in Riven → it appears in /mount via FUSE → Jellyfin picks
+       it up within ~30-60 seconds.
 
-  Request → watch in seconds. The pipeline is bulletproof.
-============================================================
 EOF
+if [ "$ALL_OK" -eq 1 ]; then
+  ok "Pipeline is bulletproof. Request → watch in seconds."
+else
+  err "One or more services failed to start. See journal output above."
+  exit 1
+fi
