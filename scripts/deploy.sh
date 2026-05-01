@@ -302,10 +302,13 @@ set -Eeuo pipefail
 mkdir -p /etc/rclone /mnt/zurg
 chown rclone:media /mnt/zurg
 chmod 0775 /mnt/zurg
-# Pre-create log file with rclone ownership; service runs unprivileged
+# Pre-create log files (rclone runs as root, but ensure files exist + chown
+# to media so health check + non-root readers can tail them)
 touch /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
-chown rclone:media /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
-chmod 0640 /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
+chown root:media /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
+chmod 0644 /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
+# Ensure fusermount3 has setuid bit (required so rclone can use --allow-other)
+chmod u+s /usr/bin/fusermount3 2>/dev/null || true
 cat >/etc/rclone/rclone.conf <<'CFG'
 [zurg]
 type = webdav
@@ -325,8 +328,9 @@ Before=jellyfin.service riven.service
 
 [Service]
 Type=notify
-User=rclone
-Group=media
+# Run as root: privileged LXC + FUSE mount with --allow-other requires it.
+# The mount itself uses --uid=1000 --gid=1000 so the files are owned by media.
+User=root
 ExecStartPre=/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:9999/dav/ >/dev/null && exit 0; sleep 2; done; exit 1'
 ExecStartPre=/bin/sh -c 'mkdir -p /mnt/zurg; fusermount3 -uz /mnt/zurg 2>/dev/null || true'
 ExecStart=/usr/bin/rclone mount zurg: /mnt/zurg --config=/etc/rclone/rclone.conf --allow-other --uid=1000 --gid=1000 --umask=002 --dir-cache-time=10s --vfs-cache-mode=full --vfs-cache-max-size=4G --vfs-cache-max-age=24h --buffer-size=64M --attr-timeout=8700h --poll-interval=15s --log-file=/var/log/rclone-zurg.log --log-level=INFO
@@ -334,8 +338,6 @@ ExecStop=/bin/fusermount3 -u /mnt/zurg
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
-NoNewPrivileges=yes
-PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
