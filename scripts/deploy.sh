@@ -212,14 +212,20 @@ systemctl enable --now redis-server
 BOOT
 ok "Base packages + repos installed."
 
-# ── 5. zurg ──────────────────────────────────────────────────────────────────
+# ── 5. zurg ───────────────────────────────────────────────────────────────────────────
 info "Installing zurg (Real-Debrid WebDAV) ..."
 pct exec "$CTID" -- bash <<'ZURG'
 set -Eeuo pipefail
+apt-get install -y --no-install-recommends -qq unzip
 ZURG_URL=$(curl -fsSL https://api.github.com/repos/debridmediamanager/zurg-testing/releases/latest \
-  | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url' | head -1)
-curl -fsSL "$ZURG_URL" -o /usr/local/bin/zurg
-chmod +x /usr/local/bin/zurg
+  | jq -r '.assets[] | select(.name|test("linux-amd64\\.zip$")) | .browser_download_url' | head -1)
+if [ -z "$ZURG_URL" ]; then echo "ERR: no zurg linux-amd64.zip asset found"; exit 1; fi
+echo "Downloading $ZURG_URL"
+curl -fsSL "$ZURG_URL" -o /tmp/zurg.zip
+unzip -oq /tmp/zurg.zip -d /tmp/zurg-unzip
+# Asset contains a single 'zurg' binary at the top level
+install -m 0755 /tmp/zurg-unzip/zurg /usr/local/bin/zurg
+rm -rf /tmp/zurg.zip /tmp/zurg-unzip
 mkdir -p /etc/zurg /var/lib/zurg
 chown -R zurg:media /etc/zurg /var/lib/zurg
 ZURG
