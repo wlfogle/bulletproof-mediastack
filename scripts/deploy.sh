@@ -41,7 +41,7 @@
 #
 # Env overrides (sane defaults provided):
 #   CTID=300                       container ID
-#   HOSTNAME=mediastack
+#   CT_HOSTNAME=mediastack
 #   IP=192.168.12.30/24
 #   GATEWAY=192.168.12.1
 #   STORAGE=local-lvm              Proxmox storage pool for rootfs
@@ -54,7 +54,9 @@
 set -Eeuo pipefail
 
 CTID="${CTID:-300}"
-HOSTNAME="${HOSTNAME:-mediastack}"
+# NOTE: HOSTNAME is a bash built-in ("$HOSTNAME" = the host's own name); use
+# a non-conflicting var name so the default actually applies.
+CT_HOSTNAME="${CT_HOSTNAME:-mediastack}"
 IP="${IP:-192.168.12.30/24}"
 GATEWAY="${GATEWAY:-192.168.12.1}"
 STORAGE="${STORAGE:-local-lvm}"
@@ -85,7 +87,7 @@ step()  { printf '\n\033[1;35m── %s ──\033[0m\n' "$*"; }
 [ "$(id -u)" -eq 0 ] || { err "Must run as root on Proxmox host."; exit 1; }
 command -v pct >/dev/null 2>&1 || { err "pct not found. Run on a Proxmox host."; exit 1; }
 
-step "Bulletproof deploy → CT-${CTID} (${HOSTNAME})"
+step "Bulletproof deploy → CT-${CTID} (${CT_HOSTNAME})"
 
 # ── 0. Ensure Debian 12 template ─────────────────────────────────────────────
 if ! pveam list local 2>/dev/null | grep -q 'debian-12-standard'; then
@@ -106,7 +108,7 @@ if pct status "$CTID" >/dev/null 2>&1; then
 else
   info "Creating privileged CT-${CTID} (${CORES}c/${RAM_MB}M/${ROOTFS_GB}G) ..."
   pct create "$CTID" "$TEMPLATE" \
-    --hostname "$HOSTNAME" \
+    --hostname "$CT_HOSTNAME" \
     --cores "$CORES" --memory "$RAM_MB" --swap "$((RAM_MB/2))" \
     --net0 "name=eth0,bridge=${BRIDGE},ip=${IP},gw=${GATEWAY},type=veth" \
     --nameserver "$DNS" \
@@ -431,7 +433,7 @@ IP_ONLY="${IP%/*}"
 cat <<EOF
 
 ============================================================
-  bulletproof-mediastack — deployed in CT-${CTID} (${HOSTNAME})
+  bulletproof-mediastack — deployed in CT-${CTID} (${CT_HOSTNAME})
 ============================================================
   Riven UI       http://${IP_ONLY}:3000   ← request shows/movies here
   Riven API      http://${IP_ONLY}:8080
