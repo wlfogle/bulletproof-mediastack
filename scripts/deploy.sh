@@ -302,6 +302,10 @@ set -Eeuo pipefail
 mkdir -p /etc/rclone /mnt/zurg
 chown rclone:media /mnt/zurg
 chmod 0775 /mnt/zurg
+# Pre-create log file with rclone ownership; service runs unprivileged
+touch /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
+chown rclone:media /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
+chmod 0640 /var/log/rclone-zurg.log /var/log/rclone-zurg-health.log
 cat >/etc/rclone/rclone.conf <<'CFG'
 [zurg]
 type = webdav
