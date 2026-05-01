@@ -149,7 +149,7 @@ apt-get install -y --no-install-recommends -qq \
   ca-certificates curl wget gnupg lsb-release apt-transport-https \
   python3 python3-pip python3-venv \
   git jq sqlite3 fuse3 \
-  tzdata cron sudo \
+  tzdata cron \
   postgresql postgresql-contrib \
   redis-server redis-tools \
   nodejs npm \
@@ -395,9 +395,12 @@ ok "rclone mount + 60s healthcheck timer active."
 info "Installing Riven backend + frontend ..."
 pct exec "$CTID" -- bash <<'RIVEN'
 set -Eeuo pipefail
+# Allow root to operate on repos owned by service users (riven, homarr).
+# Without this, git refuses with 'dubious ownership' on re-runs.
+git config --system --add safe.directory '*'
 systemctl enable --now postgresql
-sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='riven'" | grep -q 1 || \
-  sudo -u postgres psql <<SQL
+runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='riven'" | grep -q 1 || \
+  runuser -u postgres -- psql <<SQL
 CREATE USER riven WITH PASSWORD 'riven';
 CREATE DATABASE riven OWNER riven;
 SQL
@@ -501,7 +504,7 @@ cat >/etc/cron.daily/riven-pgdump <<'CRON'
 set -euo pipefail
 DIR=/var/backups/riven
 DATE=$(date -u +%Y%m%d)
-sudo -u postgres pg_dump -Fc riven > "$DIR/riven-$DATE.pgdump"
+runuser -u postgres -- pg_dump -Fc riven > "$DIR/riven-$DATE.pgdump"
 find "$DIR" -name 'riven-*.pgdump' -mtime +7 -delete
 CRON
 chmod 0755 /etc/cron.daily/riven-pgdump
