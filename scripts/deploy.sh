@@ -160,15 +160,17 @@ curl -fsS https://api.real-debrid.com >/dev/null || { echo "no internet to RD"; 
 
 install -d /usr/share/keyrings /etc/apt/sources.list.d
 
-# Jellyfin repo
+# Jellyfin repo (idempotent: rm + dearmor with --batch --yes for re-runs)
+rm -f /usr/share/keyrings/jellyfin.gpg
 curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
-  | gpg --dearmor -o /usr/share/keyrings/jellyfin.gpg
+  | gpg --batch --yes --dearmor -o /usr/share/keyrings/jellyfin.gpg
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/jellyfin.gpg] https://repo.jellyfin.org/master/debian bookworm main" \
   >/etc/apt/sources.list.d/jellyfin.list
 
 # Caddy repo (official)
+rm -f /usr/share/keyrings/caddy.gpg
 curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key \
-  | gpg --dearmor -o /usr/share/keyrings/caddy.gpg
+  | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy.gpg
 echo "deb [signed-by=/usr/share/keyrings/caddy.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
   >/etc/apt/sources.list.d/caddy.list
 
