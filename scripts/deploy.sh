@@ -348,6 +348,9 @@ runuser -u riven -- bash -c '
   cd /opt/riven-frontend
   # pnpm needs a writable HOME for its store
   export HOME=/var/lib/riven
+  # Vite/SvelteKit build hits V8 default heap (~4 GB) on this codebase;
+  # bump to 6 GB. CT has 8 GB so this leaves comfortable headroom.
+  export NODE_OPTIONS="--max-old-space-size=6144"
   pnpm install --frozen-lockfile=false
   pnpm run build
   pnpm prune --prod
