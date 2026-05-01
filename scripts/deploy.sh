@@ -404,15 +404,24 @@ SQL
 
 git clone https://github.com/rivenmedia/riven.git /opt/riven 2>/dev/null || git -C /opt/riven pull
 chown -R riven:media /opt/riven
-sudo -u riven python3 -m venv /opt/riven/.venv
-sudo -u riven /opt/riven/.venv/bin/pip install --quiet --upgrade pip poetry
-cd /opt/riven && sudo -u riven /opt/riven/.venv/bin/poetry install --no-root --quiet
+# We're already root in the CT (pct exec). runuser cleanly drops to the
+# riven user with its real HOME, no PAM session, no "cannot cd /root" noise.
+runuser -u riven -- bash -c '
+  set -Eeuo pipefail
+  cd /opt/riven
+  python3 -m venv .venv
+  .venv/bin/pip install --quiet --upgrade pip poetry
+  .venv/bin/poetry install --no-root --quiet
+'
 
 git clone https://github.com/rivenmedia/riven-frontend.git /opt/riven-frontend 2>/dev/null || git -C /opt/riven-frontend pull
-cd /opt/riven-frontend
-npm install --silent
-npm run build --silent
 chown -R riven:media /opt/riven-frontend
+runuser -u riven -- bash -c '
+  set -Eeuo pipefail
+  cd /opt/riven-frontend
+  npm install --silent
+  npm run build --silent
+'
 
 mkdir -p /mnt/library/movies /mnt/library/shows
 chown -R riven:media /mnt/library
