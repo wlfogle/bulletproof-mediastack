@@ -2,3 +2,12 @@
 *.local-backup
 *.swp
 .DS_Store
+
+# Android build output (must NOT be tracked)
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/app/.gradle/
+android-app/local.properties
+android-app/.idea/
+android-app/**/*.apk
