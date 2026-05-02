@@ -648,6 +648,8 @@ pct exec "$CTID" -- systemctl enable --now caddy
 ok "Caddy :80/:443 ready."
 
 # ── 10. CrowdSec ─────────────────────────────────────────────────────────────
+# CrowdSec's LAPI defaults to 127.0.0.1:8080 — that collides with Riven's
+# backend, which also wants :8080. Move LAPI to :8081 so both fit.
 info "Configuring CrowdSec ..."
 pct exec "$CTID" -- bash <<'CS'
 set -Eeuo pipefail
@@ -667,9 +669,21 @@ filenames:
 labels:
   type: caddy
 YML
+# Move CrowdSec LAPI off port 8080 (Riven backend uses 8080)
+if grep -q '127.0.0.1:8080' /etc/crowdsec/config.yaml; then
+  sed -i 's|127\.0\.0\.1:8080|127.0.0.1:8081|g' /etc/crowdsec/config.yaml
+fi
+if [ -f /etc/crowdsec/local_api_credentials.yaml ] && grep -q '127.0.0.1:8080' /etc/crowdsec/local_api_credentials.yaml; then
+  sed -i 's|127\.0\.0\.1:8080|127.0.0.1:8081|g' /etc/crowdsec/local_api_credentials.yaml
+fi
 cscli collections install crowdsecurity/linux crowdsecurity/sshd crowdsecurity/caddy 2>&1 | tail -5 || true
 systemctl restart crowdsec || true
 systemctl enable --now crowdsec crowdsec-firewall-bouncer || true
+# Confirm LAPI is now on 8081
+if ss -ltn 2>/dev/null | grep -q '127.0.0.1:8080.*crowdsec'; then
+  echo "ERR: CrowdSec is still bound to :8080 after reconfig" >&2
+  exit 1
+fi
 CS
 ok "CrowdSec scanning journal + Caddy access log."
 
