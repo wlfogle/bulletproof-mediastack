@@ -5,36 +5,25 @@
 -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <!-- Per-service LXC architecture — each CT has its own IP on 192.168.12.x -->
-        <!-- Infrastructure (100-107) -->
-        <domain includeSubdomains="false">192.168.12.100</domain>
-        <domain includeSubdomains="false">192.168.12.101</domain>
-        <domain includeSubdomains="false">192.168.12.102</domain>
-        <domain includeSubdomains="false">192.168.12.103</domain>
+        <!-- bulletproof-mediastack (post-*arr) — CT-300 holds the whole pipeline -->
+        <!-- CT-300 mediastack (Riven UI :3000, Riven API :8080, Jellyfin :8096, Caddy :80/:443) -->
+        <domain includeSubdomains="false">192.168.12.30</domain>
+        <!-- CT-104 vaultwarden (HTTPS, kept for password manager) -->
         <domain includeSubdomains="false">192.168.12.104</domain>
-        <domain includeSubdomains="false">192.168.12.105</domain>
-        <domain includeSubdomains="false">192.168.12.106</domain>
+        <!-- CT-107 authentik (SSO) -->
         <domain includeSubdomains="false">192.168.12.107</domain>
-        <!-- Download stack (210-224) -->
-        <domain includeSubdomains="false">192.168.12.210</domain>
-        <domain includeSubdomains="false">192.168.12.212</domain>
-        <domain includeSubdomains="false">192.168.12.213</domain>
-        <domain includeSubdomains="false">192.168.12.214</domain>
-        <domain includeSubdomains="false">192.168.12.215</domain>
-        <domain includeSubdomains="false">192.168.12.217</domain>
-        <!-- Media servers (230-231) -->
-        <domain includeSubdomains="false">192.168.12.230</domain>
-        <domain includeSubdomains="false">192.168.12.231</domain>
-        <!-- DHCP services — update IPs if they change -->
-        <domain includeSubdomains="false">192.168.12.151</domain>
-        <domain includeSubdomains="false">192.168.12.188</domain>
-        <domain includeSubdomains="false">192.168.12.223</domain>
-        <!-- Proxmox host -->
+        <!-- CT-100 wireguard (server, optional admin) -->
+        <domain includeSubdomains="false">192.168.12.100</domain>
+        <!-- Bahamut: AdGuard, wg-easy, Vaultwarden mirror -->
+        <domain includeSubdomains="false">192.168.12.244</domain>
+        <!-- Proxmox host (admin UI) -->
         <domain includeSubdomains="false">192.168.12.242</domain>
-        <!-- Ziggy Pi -->
-        <domain includeSubdomains="false">192.168.12.20</domain>
-        <!-- Laptop -->
+        <!-- Open WebUI / SearXNG when CT-900 is up -->
+        <domain includeSubdomains="false">192.168.12.250</domain>
+        <!-- Laptop (Sunshine, NFS, etc.) -->
         <domain includeSubdomains="false">192.168.12.172</domain>
+        <!-- *.mediastack.lan via Caddy internal CA -->
+        <domain includeSubdomains="true">mediastack.lan</domain>
         <!-- DuckDNS -->
         <domain includeSubdomains="true">lou-fogle-media-stack.duckdns.org</domain>
     </domain-config>

@@ -1,19 +1,31 @@
 # TiamatsStack Android App
 
-WebView-based dashboard for the Tiamat homelab media stack.
-Works on phones, tablets, and Fire TV devices (via LEANBACK_LAUNCHER + D-pad navigation).
+WebView-based dashboard for the **bulletproof-mediastack** (post-*arr) on Tiamat.
+Works on phones, tablets, and Fire TV (LEANBACK_LAUNCHER + D-pad navigation).
 
 ## Services
 
-Each service runs in its own Proxmox LXC with a dedicated IP on `192.168.12.x`.
-Service URLs are defined in `app/src/main/java/com/tiamat/mediastack/MediaService.kt`.
+The whole media pipeline now lives in **CT-300** (`192.168.12.30`). The app
+shortcuts to:
 
-**Media:** Jellyfin (CT-231), Plex (CT-230)
-**Requests:** Jellyseerr (CT-242, DHCP)
-**Arr Suite:** Sonarr (CT-214), Radarr (CT-215), Prowlarr (CT-210), Bazarr (CT-240, DHCP)
-**Downloads:** qBittorrent (CT-212, VPN proxied), rdt-client (CT-213)
-**AI:** Open WebUI (CT-900, DHCP) — Ollama via RTX 4080 on laptop
-**Network/Infra:** AdGuard Home (Pi), Authentik (CT-107), Traefik (CT-103), Vaultwarden (CT-104), wg-easy (Pi)
+**Watch:**
+- Jellyfin — `http://192.168.12.30:8096`
+- Live TV (Jellyfin DVR / IPTV) — `http://192.168.12.30:8096/web/#/livetv.html`
+
+**Search & Add:**
+- Riven UI (replaces Jellyseerr + Sonarr/Radarr) — `http://192.168.12.30:3000`
+
+**Tools:**
+- Riven API (diagnostics) — `http://192.168.12.30:8080`
+- AI Chat (Open WebUI on CT-900 when running) — `http://192.168.12.250:3000`
+
+**Infrastructure:**
+- AdGuard Home (Bahamut) — `http://192.168.12.244:3000`
+- VPN / wg-easy (Bahamut) — `http://192.168.12.244:51821`
+- Vaultwarden (CT-104) — `https://192.168.12.104`
+- Authentik (CT-107) — `http://192.168.12.107:9000`
+
+Service URLs are defined in `app/src/main/java/com/tiamat/mediastack/MediaService.kt`.
 
 ## Prerequisites
 
@@ -72,13 +84,16 @@ The app appears in Fire TV's **Your Apps & Channels** row.
 
 ## Updating Service IPs
 
-If a DHCP container gets a new IP, update `ServiceRepository` in `MediaService.kt` and rebuild.
-Current DHCP services:
-- Jellyseerr — `192.168.12.151`
-- Bazarr — `192.168.12.188`
-- Open WebUI — `192.168.12.223`
+If an IP changes, update `ServiceRepository` in `MediaService.kt` and rebuild.
+`network_security_config.xml` also needs the new IP added so Android allows
+cleartext HTTP to it (LAN-only).
 
-Static IPs (100–107, 210–215, 230–231) don't change.
+Current IPs:
+- CT-300 mediastack — `192.168.12.30` (static)
+- CT-104 vaultwarden — `192.168.12.104` (static)
+- CT-107 authentik — `192.168.12.107` (static)
+- Bahamut (AdGuard, wg-easy) — `192.168.12.244` (static)
+- CT-900 ziggy (AI Chat) — `192.168.12.250` (DHCP, currently stopped)
 
 ## Project Structure
 
