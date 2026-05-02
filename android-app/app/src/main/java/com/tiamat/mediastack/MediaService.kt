@@ -27,6 +27,16 @@ object ServiceRepository {
 
     fun getServices(): List<MediaService> = listOf(
 
+        // ── Dashboard ──
+
+        MediaService(
+            name        = "Dashboard",
+            url         = "http://192.168.12.30/",
+            description = "Bulletproof tile launcher (all services)",
+            iconResId   = R.drawable.ic_service_homarr,
+            category    = "Watch"
+        ),
+
         // ── Watch ──
 
         MediaService(
@@ -89,12 +99,44 @@ object ServiceRepository {
             category    = "Infra"
         ),
 
-        // ── Tools ──
+        // ── Control & Monitoring ──
+
+        MediaService(
+            name        = "Cockpit",
+            url         = "http://192.168.12.30:9090",
+            description = "CT-300 service control — cockpit/cockpit",
+            iconResId   = R.drawable.ic_service_traefik,
+            category    = "Tools"
+        ),
+
+        MediaService(
+            name        = "ProxMenux Monitor",
+            url         = "http://192.168.12.242:8008",
+            description = "Proxmox system dashboard",
+            iconResId   = R.drawable.ic_service_homarr,
+            category    = "Tools"
+        ),
+
+        MediaService(
+            name        = "Pulse",
+            url         = "http://192.168.12.251:7655",
+            description = "Proxmox health monitor",
+            iconResId   = R.drawable.ic_service_homarr,
+            category    = "Tools"
+        ),
+
+        MediaService(
+            name        = "Proxmox",
+            url         = "https://192.168.12.242:8006",
+            description = "Proxmox virtualization mgmt",
+            iconResId   = R.drawable.ic_service_traefik,
+            category    = "Tools"
+        ),
 
         MediaService(
             name        = "Riven API",
-            url         = "http://192.168.12.30:8080",
-            description = "Riven backend (diagnostics)",
+            url         = "http://192.168.12.30:8080/docs",
+            description = "Riven backend Swagger UI",
             iconResId   = R.drawable.ic_service_traefik,
             category    = "Tools"
         ),

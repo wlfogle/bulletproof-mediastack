@@ -1,0 +1,146 @@
+[
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_homarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_homarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_vaultwarden.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_vaultwarden.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_item_section_header.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/item_section_header.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/xml_network_security_config.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_adguard.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_adguard.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_wgeasy.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_wgeasy.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_realdebrid.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_realdebrid.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_authentik.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_authentik.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_tv_focus_ring.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/tv_focus_ring.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_openwebui.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_openwebui.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_bazarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_bazarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_sonarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_sonarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_activity_webview.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/activity_webview.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_calibreweb.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_calibreweb.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_launcher.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_activity_main.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_jellyfin.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_jellyfin.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_activity_tv_main.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/activity_tv_main.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_prowlarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_prowlarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_livetv.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_livetv.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_audiobookshelf.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_audiobookshelf.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_badge_background.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/badge_background.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_item_service.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/item_service.xml"
+    },
+    {
+        "merged": "com.tiamat.mediastack.app-merged_res-35:/xml_network_security_config.xml.flat",
+        "source": "com.tiamat.mediastack.app-main-37:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_readarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_readarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_overseerr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_overseerr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_plex.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_plex.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_tautulli.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_tautulli.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_radarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_radarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_qbit.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_qbit.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_launcher_round.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_launcher_round.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_traefik.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_traefik.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/drawable_ic_service_lidarr.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/drawable/ic_service_lidarr.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_item_tv_service.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/item_tv_service.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/menu_main_menu.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/menu/main_menu.xml"
+    },
+    {
+        "merged": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-merged_res-35:/layout_item_tv_row.xml.flat",
+        "source": "/home/loufogle/.gradle/daemon/8.4/com.tiamat.mediastack.app-main-37:/layout/item_tv_row.xml"
+    }
+]

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#0F0F1A</color>
+    <color name="card_background">#1E1E30</color>
+    <color name="colorAccent">#E94560</color>
+    <color name="colorPrimary">#1A1A2E</color>
+    <color name="colorPrimaryDark">#16213E</color>
+    <color name="text_secondary">#B0B0C0</color>
+    <color name="white">#FFFFFF</color>
+    <string name="app_name">TiamatsStack</string>
+    <string name="coming_soon">Coming Soon</string>
+    <string name="service_icon_description">Service icon</string>
+    <string name="tv_subtitle">Search \u0026 add content</string>
+    <style name="Theme.TiamatsStack" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
+        
+        <item name="popupMenuStyle">@style/Widget.TiamatsStack.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.TiamatsStack.PopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.TiamatsStack.PopupMenu</item>
+    </style>
+    <style name="Theme.TiamatsStack.Leanback" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowOverscan">true</item>
+    </style>
+    <style name="Widget.TiamatsStack.PopupMenu" parent="Widget.MaterialComponents.PopupMenu.Overflow">
+        <item name="android:popupBackground">@color/card_background</item>
+    </style>
+</resources>
