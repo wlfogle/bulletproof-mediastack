@@ -1,124 +1,115 @@
-# Media Stack Credentials & Access URLs
+# Credentials & Access (post-arr)
 
-> IPs verified against live Proxmox on 2026-04-24
+> Convention: every service that supports its own login uses `servicename / servicename`
+> for ease of recall. Master-password / user-chosen secrets (Vaultwarden, Proxmox root)
+> are intentionally preserved.
+>
+> Status legend:
+> ✅ already set during deploy ⏳ to set on first login 🔒 preserved (not changed)
 
-## Media Servers
-| CT | Service | URL | User | Pass | Status |
-|---|---|---|---|---|---|
-| CT-231 | Jellyfin | http://192.168.12.231:8096 | jellyfin | jellyfin | ✅ running (4 cores, 8GB RAM) |
-| CT-230 | Plex | http://192.168.12.230:32400/web | loufogle (Plex account) | — | ⏹ stopped |
+## CT-300 — bulletproof-mediastack core (`192.168.12.30`)
 
-## Live TV / OTA
-| CT | Service | URL | Notes | Status |
+| Service | URL | User | Pass | Status |
 |---|---|---|---|---|
-| — | HDHomeRun CONNECT | http://192.168.12.215 | Device ID: 1048EEE4, 2 tuners, 46 OTA channels | ✅ active |
-| — | HDHomeRun M3U | http://192.168.12.215:5004/lineup.m3u | Direct from device | ✅ active |
-| Laptop | TVHeadend (snap) | http://192.168.12.172:9981 | Web UI — no login on LAN, 46 channels mapped | ✅ running |
-| Laptop | TVHeadend HTSP | 192.168.12.172:9982 | For Jellyfin/TVHPlayer | ✅ running |
-| Laptop | TVH M3U (served) | http://192.168.12.172:8765/hdhomerun.m3u | systemd HTTP server | ✅ running |
-| Laptop | EPG XMLTV | http://192.168.12.172:8766/epg.xml | zap2xml (75ch, 16K programmes, daily 3:30AM) | ✅ running |
-| CT-231 | Jellyfin Live TV | http://192.168.12.231:8096 | HDHomeRun tuner + XMLTV EPG, DVR → /data/media/recordings | ✅ configured |
-| Laptop | TVH DVR | /mnt/tiamat-recordings | NFS mount → Tiamat /mnt/hdd/media/recordings | ✅ mounted |
+| Dashboard (tile launcher) | http://192.168.12.30/ | — (no auth) | — | ✅ |
+| Riven UI (request) | http://192.168.12.30:3000/ | `riven` | `riven` | ⏳ sign up at first visit (`ENABLE_EMAIL_PASSWORD_SIGNUP=true`) |
+| Riven API | http://192.168.12.30:8080/docs | header `Authorization: Bearer <API_KEY>` | — | ✅ key in `/etc/bulletproof-mediastack-api-key` |
+| Jellyfin | http://192.168.12.30:8096/ | `jellyfin` | `jellyfin` | ✅ |
+| Cockpit (system control) | http://192.168.12.30:9090/ | `cockpit` | `cockpit` | ✅ (sudo group) |
+| PostgreSQL | 127.0.0.1:5432 (in CT only) | `postgres` | `postgres` | ✅ db=`riven` |
+| Redis/Valkey | 127.0.0.1:6379 (in CT only) | — (no auth) | — | bind localhost |
+| Caddy (reverse proxy) | :80 / :443 | — | — | local LAN |
 
-## Alexa Bridge
-| CT | Service | URL | Notes | Status |
-|---|---|---|---|---|
-| CT-200 | Caddy HTTPS proxy | https://ha.lou-fogle-media-stack.duckdns.org | Let's Encrypt cert, reverse proxy → HA 192.168.12.123:8123 | ✅ running |
-| VM-990 | Home Assistant | http://192.168.12.123:8123 | HAOS, user: loufogle/homeassist | ✅ running |
+### Caddy TLS (internal CA — add to `/etc/hosts` on viewing devices)
+```
+192.168.12.30 riven.mediastack.lan jellyfin.mediastack.lan cockpit.mediastack.lan
+```
+- https://riven.mediastack.lan
+- https://jellyfin.mediastack.lan
+- https://cockpit.mediastack.lan
 
-## Download Stack
-| CT | Service | URL | User/API Key | Status |
-|---|---|---|---|---|
-| CT-212 | qBittorrent | http://192.168.12.212:8080 | admin / adminadmin | ✅ running |
-| CT-210 | Prowlarr | http://192.168.12.210:9696 | API: 6719026a4a5042a99897597122fa4495 | ✅ running |
-| CT-211 | Jackett | http://192.168.12.211:9117 | — | ✅ running |
-| CT-214 | Sonarr | http://192.168.12.214:8989 | API: 9e2127824e7446f6a2ddc5da67cfe693 | ✅ running |
-| CT-215 | Radarr | http://192.168.12.225:7878 | API: 19e51404b34548aabf48076073898d0d | ✅ running |
-| CT-217 | Readarr | http://192.168.12.217:8787 | API: 19566aa7fb90487ebd2c643ad8c6595d | ✅ running |
-| CT-218 | Lidarr | http://192.168.12.218:8686 | API: 3ff130f5566448e4bc0ce42bdf24c24e | ✅ running |
-| CT-221 | Mylar3 | http://192.168.12.221:8090 | — | ✅ running |
-| CT-213 | RDT-Client (hostname `rdtclient`, ex-`decypharr`) | http://192.168.12.213:6500 | admin / Rdtclient2026! | ✅ running |
-
-## Media Management
-| CT | Service | URL | User | Pass | Status |
-|---|---|---|---|---|---|
-| CT-242 | Jellyseerr | http://192.168.12.151:5055 | seerr@local | seerr | ✅ running |
-| CT-241 | Overseerr | http://192.168.12.224:5055 | — | — | ✅ running |
-| CT-244 | Tautulli | http://192.168.12.169:8181 | tautulli | tautulli | ✅ running |
-| CT-240 | Bazarr | http://192.168.12.188:6767 | none | — | ⏹ stopped |
-| CT-277 | Recyclarr | http://192.168.12.141 | — | — | ✅ running |
-| CT-245 | Kometa | — | — | — | ⏹ stopped |
-
-## Libraries
-| CT | Service | URL | User | Pass | Status |
-|---|---|---|---|---|---|
-| CT-232 | Audiobookshelf | http://192.168.12.232:13378 | (set on first login) | — | ✅ running |
-| CT-233 | Calibre-Web | http://192.168.12.233:8083 | calibre | calibre | ✅ running |
-
-## Dashboards & Tools
-| CT | Service | URL | Status |
-|---|---|---|---|
-| CT-275 | Homarr | http://192.168.12.241:7575 | ✅ running | homarr / eVSdq6xAF5pJFr9! |
-| CT-950 | Pulse | http://192.168.12.251:7655 | ✅ running | (set on first login) |
-| CT-276 | Homepage | — | ⏹ stopped |
-| CT-103 | Traefik | http://192.168.12.103:8080 | ✅ running |
-| CT-900 | Open WebUI (Ziggy) | http://192.168.12.250:3000 | ⏹ stopped (onboot: 0) |
-| CT-109 | Byparr | http://192.168.12.109:8191 | ✅ running (replaced FlareSolverr) |
-| CT-102 | FlareSolverr | http://192.168.12.102:8191 | ⏹ deprecated → use CT-109 Byparr |
-| CT-280 | RetroArch Web | — | ⏹ stopped |
-| — | Quantum (File Browser) | http://192.168.12.242:32743 | quantum / quantum |
-
-## Infrastructure
-| CT | Service | URL | User | Pass | Status |
-|---|---|---|---|---|---|
-| CT-100 | WireGuard | 192.168.12.100:51820/udp | — | — | ✅ running |
-| CT-101 | WG-Proxy (TinyProxy) | http://192.168.12.101:8888 | — | — | ✅ running |
-| CT-104 | Vaultwarden | https://192.168.12.104 | (create account) | — | ✅ running |
-| CT-105 | Valkey (Redis) | 192.168.12.105:6379 | — | — | ✅ running |
-| CT-106 | PostgreSQL | 192.168.12.106:5432 | — | — | ✅ running |
-| CT-107 | Authentik | http://192.168.12.107:9000 | — | — | ✅ running |
-| CT-279 | Tailscale | 192.168.12.220 | — | — | ✅ running |
-| CT-278 | CrowdSec | — | — | — | ⏹ stopped |
-| — | Proxmox | https://192.168.12.242:8006 | root | (your root pw) | ✅ host |
-
-## Bahamut (Raspberry Pi 4B — 192.168.12.244)
-| Service | URL | User | Pass |
-|---|---|---|---|
-| AdGuard Home | http://192.168.12.244:3000 | adguard | (your pw) |
-| wg-easy | http://192.168.12.244:51821 | — | (hashed pw) |
-| Vaultwarden | https://192.168.12.244 (via Caddy) | (create account) | — |
-| DietPi Dashboard | http://192.168.12.244:5252 | (DietPi login) | — |
-
-## Remote Access
-| Service | URL | Notes |
+### Persistent secrets on Tiamat host
+| Path | Contents | Mode |
 |---|---|---|
-| Jellyfin (Tailscale Funnel) | https://tiamat-tailscale.tail9d8b73.ts.net/ | Public internet, no VPN needed |
-| Jellyfin (LAN) | http://192.168.12.231:8096 | Local network only |
+| `/etc/bulletproof-mediastack-api-key` | Riven backend `API_KEY` (32 chars) | 0600 |
+| `/etc/bulletproof-mediastack-auth-secret` | Riven frontend `AUTH_SECRET` | 0600 |
+| `/etc/jellyfin-autoscan.env` (in CT) | Jellyfin Autoscan API key | 0600 |
 
-## VNC
-| System | Address | Display | Notes |
-|---|---|---|---|
-| Tiamat | 192.168.12.242:5900 | :0 (x11vnc) | GPU-rendered (RX 580), use this one |
-| Bahamut | 192.168.12.244:5901 | :1 (Xtigervnc + Warp) | |
+## Tiamat host (`192.168.12.242`)
 
-Laptop launcher: "Tiamat (VNC)" in app menu → `xtigervncviewer 192.168.12.242:5900`
+| Service | URL | User | Pass | Status |
+|---|---|---|---|---|
+| Proxmox VE | https://192.168.12.242:8006/ | `root@pam` | (existing root pw) | 🔒 |
+| ProxMenux Monitor | http://192.168.12.242:8008/ | — (no auth) | — | ✅ |
+| SSH | `ssh root@192.168.12.242` | `root` | (key auth, ssh-agent) | 🔒 |
 
-## NFS Mounts (Laptop)
-| Mount Point | Source | Mode |
+## Other CTs / VMs (still running)
+
+| CT | Service | URL | User | Pass | Status |
+|---|---|---|---|---|---|
+| 100 | wireguard server | `:51820/udp` | (key auth) | — | 🔒 |
+| 101 | wg-proxy / TinyProxy | http://192.168.12.101:8888/ | — (no auth) | — | 🔒 |
+| 103 | Traefik | http://192.168.12.103:8080/ | — (no auth) | — | 🔒 |
+| 104 | Vaultwarden | https://192.168.12.104/ | (your master) | (your master) | 🔒 master-password preserved |
+| 105 | Valkey | `:6379` (LAN) | — | — | 🔒 |
+| 106 | PostgreSQL | `:5432` | (Authentik internal) | — | 🔒 |
+| 107 | Authentik (SSO) | http://192.168.12.107:9000/ | `authentik` | `authentik` | ⏳ change in admin UI to match |
+| 110 | Pulse | http://192.168.12.251:7655/ | `pulse` | `pulse` | ⏳ set on first login |
+| 200 | alexa-media-bridge | (HA-internal) | — | — | 🔒 |
+| 279 | Tailscale | (CLI) | tskey-auth-... | — | 🔒 |
+| 990 (VM) | Home Assistant OS | http://192.168.12.123:8123/ | `loufogle` | (your existing pw) | 🔒 |
+| 901 (VM) | windows-gaming | console | (Windows local) | — | 🔒 |
+
+## Bahamut Pi (`192.168.12.244`)
+
+| Service | URL | User | Pass | Status |
+|---|---|---|---|---|
+| AdGuard Home | http://192.168.12.244:3000/ | `adguard` | `adguard` | ⏳ change in Settings → General |
+| wg-easy | http://192.168.12.244:51821/ | (master pw hash) | (master pw) | 🔒 |
+| Vaultwarden mirror | https://192.168.12.244/ | (your master) | (your master) | 🔒 |
+| DietPi Dashboard | http://192.168.12.244:5252/ | (DietPi default) | — | 🔒 |
+| TigerVNC | 192.168.12.244:5901 | (DietPi default) | — | 🔒 |
+
+## Test files / smoke-test artifacts
+
+| Item | Path | Notes |
 |---|---|---|
-| /mnt/tiamat-media | 192.168.12.242:/mnt/hdd/media | read-only (full library) |
-| /mnt/tiamat-recordings | 192.168.12.242:/mnt/hdd/media/recordings | read-write (DVR) |
+| Test movie generator | (deploy-time, ffmpeg in CT-300) | wrote to `/mnt/hdd/media/movies/Bulletproof Test (2026)/` then cleaned up |
+| Probe / install scripts | `/tmp/install-*-stage*.sh` | one per deploy stage; can be re-run idempotently |
 
-## API Keys Reference
-| Service | Key |
-|---|---|
-| Prowlarr | 6719026a4a5042a99897597122fa4495 |
-| Sonarr | 9e2127824e7446f6a2ddc5da67cfe693 |
-| Radarr | 19e51404b34548aabf48076073898d0d |
-| Readarr | 19566aa7fb90487ebd2c643ad8c6595d |
-| Lidarr | 3ff130f5566448e4bc0ce42bdf24c24e |
-| Plex Token | mixMERF9aEJxg9HrDzZW |
-| TMDb | 47ef060c8451984321a70c2a07c63bce |
-| Real Debrid | S637QWEA454DIRAVGD5MKVAU7CH62FMASOSSXQNY5ERTJCFKINKQ |
-| Jellyfin (Oz-Agent) | 849ce95e446c4fbaa6b948c4d548b0eb |
- |Pulse Token: | a5bac95b282323b78364c8375ce8a6439e14b35b348b846f |
+## API keys reference
+
+| Service | Key location | Usage |
+|---|---|---|
+| Riven backend `API_KEY` | `/etc/bulletproof-mediastack-api-key` (Tiamat) | sent by Riven frontend, used to drive backend |
+| Riven frontend `AUTH_SECRET` | `/etc/bulletproof-mediastack-auth-secret` (Tiamat) | better-auth session signer |
+| Jellyfin Autoscan API key | inside CT-300: `/etc/jellyfin-autoscan.env` (mode 0600) | used by `jellyfin-autoscan.service` polling watcher to POST `/Library/Refresh` |
+| Real-Debrid token | `/opt/bulletproof-mediastack/.env` (Tiamat) | drives `RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY` |
+| Real-Debrid premium expiry | tracked by RD | **2026-05-19** — renew before then |
+
+## How to change a credential later
+
+### Riven UI password
+After signup, log in → user menu → settings → password.
+
+### Jellyfin password
+Login → user menu → Profile → Password.
+
+### Cockpit (`cockpit` user) password
+Open Cockpit → top-right user menu → "Authentication" → Change password. Or in a CT-300 shell:
+```
+pct exec 300 -- bash -c 'echo "cockpit:NEW_PASSWORD" | chpasswd'
+```
+
+### Real-Debrid token
+Update `/opt/bulletproof-mediastack/.env` on Tiamat → re-run `bash scripts/deploy.sh` (idempotent — picks up new token, rewrites unit, restarts riven).
+
+### Authentik admin / AdGuard / Pulse first-login
+Open the URL, log in / sign up. Use the matching `servicename / servicename` value if the UI prompts.
+
+## Quick start
+
+1. Open the **TiamatsStack** android app or browse to `http://192.168.12.30/` → tile dashboard.
+2. Tap **Search & Add** → first time: sign up as `riven / riven`. Search a title → click **Request**.
+3. Wait ~30–60 s. Tap **Jellyfin** → log in `jellyfin / jellyfin` → the title is in your library.
+4. For service control / logs / restart, tap **Cockpit** → log in `cockpit / cockpit`.
