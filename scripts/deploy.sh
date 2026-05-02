@@ -68,6 +68,12 @@ FORCE_RECREATE="${FORCE_RECREATE:-0}"
 TAILSCALE_AUTHKEY="${TAILSCALE_AUTHKEY:-}"
 UV_VERSION="${UV_VERSION:-0.5.16}"
 PNPM_VERSION="${PNPM_VERSION:-10.28.0}"
+# Bind-mount the existing on-host media library into CT-300 as /data/media
+# (read-only). This keeps the pre-existing /mnt/hdd/media library (movies, tv,
+# music, books, audiobooks, comics, recordings) reachable from Jellyfin
+# alongside whatever Riven materializes at /mount via RivenVFS.
+MEDIA_HOST_PATH="${MEDIA_HOST_PATH:-/mnt/hdd/media}"
+MEDIA_CT_PATH="${MEDIA_CT_PATH:-/data/media}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 [ -r "${SCRIPT_DIR}/../.env" ] && { set -a; . "${SCRIPT_DIR}/../.env"; set +a; }
@@ -208,7 +214,7 @@ else
   ok "CT-${CTID} created."
 fi
 
-# ── 2. LXC config: /dev/fuse, /dev/dri (VAAPI), /dev/net/tun ─────────────────
+# ── 2. LXC config: /dev/fuse, /dev/dri (VAAPI), /dev/net/tun ─────────────
 CONF="/etc/pve/lxc/${CTID}.conf"
 add_line() { grep -qxF "$1" "$CONF" || echo "$1" >>"$CONF"; }
 add_line "lxc.cgroup2.devices.allow: c 226:0 rwm"
@@ -220,6 +226,20 @@ add_line "lxc.cgroup2.devices.allow: c 10:200 rwm"
 add_line "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file"
 add_line "lxc.apparmor.profile: unconfined"
 add_line "lxc.cap.drop:"
+
+# ── 2b. Bind /mnt/hdd/media into CT-300 as /data/media (read-only) ───────────
+if [ -d "$MEDIA_HOST_PATH" ]; then
+  if ! grep -qE "^mp[0-9]+: ${MEDIA_HOST_PATH//\//\\/}," "$CONF"; then
+    # Find the next free mp index
+    next_mp=$(awk -F: '/^mp[0-9]+:/{n=substr($1,3)+0; if(n>max)max=n} END{print (max?max+1:0)}' "$CONF")
+    info "Binding ${MEDIA_HOST_PATH} -> ${MEDIA_CT_PATH} (ro) as mp${next_mp}"
+    pct set "$CTID" --mp${next_mp} "${MEDIA_HOST_PATH},mp=${MEDIA_CT_PATH},ro=1,backup=0,replicate=0"
+  else
+    ok "${MEDIA_HOST_PATH} already bound into CT-${CTID}"
+  fi
+else
+  warn "${MEDIA_HOST_PATH} does not exist on the Proxmox host — skipping bind-mount"
+fi
 
 # ── 3. Start CT and wait for network/DNS ─────────────────────────────────────
 if [ "$(pct status "$CTID" 2>/dev/null | awk '{print $2}')" != "running" ]; then
@@ -762,9 +782,10 @@ cat <<EOF
     https://jellyfin.mediastack.lan
 
   Internal:
-    PostgreSQL    127.0.0.1:5432  (db=riven user=postgres pw=postgres)
-    Redis/Valkey  127.0.0.1:6379
-    Riven VFS     /mount (FUSE — provided by Riven backend itself)
+    PostgreSQL      127.0.0.1:5432  (db=riven user=postgres pw=postgres)
+    Redis/Valkey    127.0.0.1:6379
+    Riven VFS       /mount (FUSE — provided by Riven backend itself; new RD content)
+    Existing media  /data/media (read-only bind of host /mnt/hdd/media)
 
   Persistent secrets on Tiamat:
     /etc/bulletproof-mediastack-api-key       (Riven backend API_KEY)
@@ -779,9 +800,14 @@ cat <<EOF
     1. Open http://${IP_ONLY}:3000 → finish Riven onboarding (RD token already
        configured via env). Confirm a content source (Trakt list, Mdblist) or
        just add a single show to test the chain.
-    2. In Jellyfin (http://${IP_ONLY}:8096): add libraries pointing at
-         /mount/movies   (Movies)
-         /mount/shows    (TV Shows)
+    2. In Jellyfin (http://${IP_ONLY}:8096): add libraries with BOTH folders
+       so existing files and new Riven content show in the same library:
+         Movies     -> /data/media/movies      AND /mount/movies
+         TV Shows   -> /data/media/tv          AND /mount/shows
+         Music      -> /data/media/music
+         Books      -> /data/media/books
+         Audiobooks -> /data/media/audiobooks
+         Recordings -> /data/media/recordings  (Live TV DVR)
        (Real-time monitor is already enabled.)
     3. Add a show in Riven → it appears in /mount via FUSE → Jellyfin picks
        it up within ~30-60 seconds.
