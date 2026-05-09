@@ -11,3 +11,7 @@ android-app/app/.gradle/
 android-app/local.properties
 android-app/.idea/
 android-app/**/*.apk
+
+# python
+__pycache__/
+*.pyc
