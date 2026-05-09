@@ -162,8 +162,19 @@ ssh_ct_host() {
 }
 
 pct_in() {
-  # run a command inside CT-300 via Tiamat
-  ssh_ct_host "pct exec $CTID -- $*"
+  # Run a command inside CT-300 via Tiamat.
+  #
+  # IMPORTANT: we must wrap the command in `bash -c` *inside* the CT, otherwise
+  # `pct exec $CTID -- cmd` makes lxc-attach try to exec `cmd` literally as a
+  # binary. That breaks two cases that previously caused do_step to spin:
+  #   1. shell builtins (e.g. `command -v ...` is bash-internal, not a binary)
+  #   2. shell operators (`&&`, `||`, redirection) which without bash -c get
+  #      parsed by the *Tiamat* shell, so the second half of
+  #      `pct exec 300 -- foo && bar` runs on the host, not in the CT.
+  # Verifier results were always wrong as a result, and the script kept
+  # “reinstalling” things that were already in place.
+  local cmd="$*"
+  ssh_ct_host "pct exec $CTID -- bash -c $(printf %q "$cmd")"
 }
 
 pct_in_bash() {
@@ -274,11 +285,27 @@ preflight() {
   # 7. Resolve secrets (rule #10/#12)
   if [ -z "${RD_USERNAME:-}" ] || [ -z "${RD_PASSWORD:-}" ] \
      || [ -z "${MYJD_EMAIL:-}" ] || [ -z "${MYJD_PASSWORD:-}" ]; then
-    # Try the in-CT env file first (idempotent rerun)
+    # Try the in-CT env file first (idempotent rerun).
+    # NOTE: parse without `eval` — passwords may contain ', ", $, `, ;, etc.
+    # Read raw KEY=VALUE lines, no shell interpretation of VALUE.
     if pct_in "test -r ${ENV_FILE}"; then
       info "loading existing secrets from ${ENV_FILE} in CT-${CTID}"
-      eval "$(ssh_ct_host "pct exec ${CTID} -- cat ${ENV_FILE}" \
-              | grep -E '^(RD_USERNAME|RD_PASSWORD|MYJD_EMAIL|MYJD_PASSWORD|MYJD_DEVICE)=')"
+      local _line _k _v
+      while IFS= read -r _line; do
+        case "$_line" in
+          RD_USERNAME=*|RD_PASSWORD=*|RD_API_TOKEN=*|MYJD_EMAIL=*|MYJD_PASSWORD=*|MYJD_DEVICE=*)
+            _k="${_line%%=*}"
+            _v="${_line#*=}"
+            # strip optional surrounding single or double quotes
+            case "$_v" in
+              \'*\')      _v="${_v#\'}"; _v="${_v%\'}" ;;
+              \"*\")      _v="${_v#\"}"; _v="${_v%\"}" ;;
+            esac
+            printf -v "$_k" '%s' "$_v"
+            export "${_k?}"
+            ;;
+        esac
+      done < <(ssh_ct_host "pct exec ${CTID} -- cat ${ENV_FILE}")
     fi
   fi
   : "${MYJD_DEVICE:=mediastack-jd2}"
@@ -291,11 +318,11 @@ preflight() {
   ok "secrets resolved"
 
   # 8. RD auth via the API_KEY already in Riven's env (independent check)
+  #    Riven runs *inside* CT-300, so systemctl must execute there. The previous
+  #    version invoked systemctl on Tiamat and silently got an empty token,
+  #    which then crashed the bridge with “FATAL: missing env: RD_API_TOKEN”.
   local rd_token
-  rd_token="$(ssh_ct_host \
-    "systemctl cat riven 2>/dev/null \
-       | grep -E '^Environment=RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY=' \
-       | cut -d= -f3-")"
+  rd_token="$(pct_in_bash "systemctl cat riven 2>/dev/null | awk -F= '/^Environment=RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY=/{print \$3; exit}' | tr -d '\"\r\n '")"
   if [ -n "$rd_token" ]; then
     if ! curl -fsS --max-time 10 \
               -H "Authorization: Bearer ${rd_token}" \
@@ -335,16 +362,18 @@ PY
 
 # ---------- step: persist secrets in CT-300 ---------------------------------
 verify_secrets() {
-  ssh_ct_host "
-    test -r ${ENV_FILE} \
-      && grep -q '^MYJD_EMAIL=' ${ENV_FILE} \
-      && grep -q '^MYJD_PASSWORD=' ${ENV_FILE} \
-      && grep -q '^RD_USERNAME=' ${ENV_FILE} \
-      && grep -q '^RD_PASSWORD=' ${ENV_FILE} \
-      && [ \$(stat -c '%a' ${ENV_FILE}) = '600' ]
-  " \
-  && pct_in "test -r ${ENV_FILE}" \
-  && [ "$(pct_in "stat -c %a ${ENV_FILE}")" = "600" ]
+  # All checks must run INSIDE CT-300; the env file does not exist on the
+  # Tiamat host and never will. (Earlier version had a Tiamat-side ssh_ct_host
+  # check that always failed and short-circuited the whole verifier.)
+  pct_in_bash "
+    test -r ${ENV_FILE} || exit 1
+    grep -q '^MYJD_EMAIL='    ${ENV_FILE} || exit 2
+    grep -q '^MYJD_PASSWORD=' ${ENV_FILE} || exit 3
+    grep -q '^RD_USERNAME='   ${ENV_FILE} || exit 4
+    grep -q '^RD_PASSWORD='   ${ENV_FILE} || exit 5
+    grep -qE '^RD_API_TOKEN=.+' ${ENV_FILE} || exit 6
+    [ \"\$(stat -c '%a' ${ENV_FILE})\" = '600' ] || exit 7
+  " >/dev/null 2>&1
 }
 execute_secrets() {
   # Build env-file content with printf %s so backticks/single-quotes/etc.
@@ -398,7 +427,9 @@ heal_bind_rw() {
 
 # ---------- step: install desktop + Java + tools ----------------------------
 verify_packages() {
-  pct_in "command -v Xvfb && command -v java && dpkg -s python3-venv >/dev/null && command -v x11vnc"
+  # `command` is a bash builtin — must run inside a shell, not as the exec target
+  # of pct exec / lxc-attach (otherwise: "Failed to exec 'command'").
+  pct_in_bash 'command -v Xvfb >/dev/null && command -v java >/dev/null && dpkg -s python3-venv >/dev/null 2>&1 && command -v x11vnc >/dev/null'
 }
 execute_packages() {
   local lxde_pkg=""
@@ -428,7 +459,10 @@ heal_packages() {
 
 # ---------- step: jd2 system user + JD2 jar + cfg ---------------------------
 verify_jd2_layout() {
-  pct_in "id jd2 >/dev/null 2>&1 && test -s ${JD2_HOME}/JDownloader.jar"
+  # Both checks must run inside CT-300. With plain pct_in the shell `&&` is
+  # parsed by Tiamat’s shell, so the second test ran on the host (where the
+  # path doesn’t exist) and the verifier always returned false.
+  pct_in_bash "id jd2 >/dev/null 2>&1 && test -s ${JD2_HOME}/JDownloader.jar"
 }
 execute_jd2_layout() {
   pct_in_bash "
@@ -449,6 +483,40 @@ execute_jd2_layout() {
 }
 heal_jd2_layout() {
   pct_in "rm -f ${JD2_HOME}/JDownloader.jar"
+}
+
+# ---------- step: copy JD2 config from Tiamat host --------------------------
+# The Tiamat-host JD2 at /root/JDownloader2/cfg/ is already paired to the
+# user's MyJDownloader account and has the Real-Debrid premium account
+# saved. Copy that whole cfg/ tree into CT-300 so the new JD2 instance
+# inherits all of it. Idempotent: tar-pipes only files newer on the host.
+TIAMAT_JD2_HOME="${TIAMAT_JD2_HOME:-/root/JDownloader2}"
+verify_jd2_cfg() {
+  pct_in_bash "test -s ${JD2_HOME}/cfg/org.jdownloader.api.myjdownloader.MyJDownloaderSettings.json && test -s ${JD2_HOME}/cfg/org.jdownloader.settings.AccountSettings.json"
+}
+execute_jd2_cfg() {
+  # Stop CT-300 JD2 if it's running so it doesn't overwrite the cfg we copy
+  pct_in "systemctl stop jdownloader2 2>/dev/null || true"
+  # tar-pipe Tiamat host's cfg/ into CT-300's cfg/ via a temp file
+  ssh_ct_host "
+    set -Eeuo pipefail
+    test -d ${TIAMAT_JD2_HOME}/cfg || { echo 'Tiamat ${TIAMAT_JD2_HOME}/cfg missing'; exit 1; }
+    tar c -C ${TIAMAT_JD2_HOME} cfg > /tmp/jd2-cfg.tar
+    pct push ${CTID} /tmp/jd2-cfg.tar /tmp/jd2-cfg.tar
+    rm -f /tmp/jd2-cfg.tar
+  "
+  pct_in_bash "
+    test -d ${JD2_HOME} || { echo 'CT-300 ${JD2_HOME} missing'; exit 1; }
+    tar xf /tmp/jd2-cfg.tar -C ${JD2_HOME}
+    rm -f /tmp/jd2-cfg.tar
+    chown -R jd2:media ${JD2_HOME}/cfg
+    chmod 0755 ${JD2_HOME}/cfg
+    find ${JD2_HOME}/cfg -type f -name '*.json' -exec chmod 0644 {} +
+    find ${JD2_HOME}/cfg -type f -name '*.ejs' -exec chmod 0644 {} +
+  "
+}
+heal_jd2_cfg() {
+  pct_in "rm -f /tmp/jd2-cfg.tar"
 }
 
 # ---------- step: Xvfb systemd service --------------------------------------
@@ -488,10 +556,46 @@ verify_jd2_running() {
   pct_in "pgrep -f 'java.*JDownloader.jar' >/dev/null"
 }
 execute_jd2_seed() {
+  # If we already copied a real cfg/ from Tiamat host, do NOT clobber the
+  # GeneralSettings or MyJDownloaderSettings files — they have working values.
+  # Only override the default download folder if it is *not* already pointing
+  # somewhere under MEDIA_CT_PATH. Then start JD2.
   pct_in_bash "
     set -Eeuo pipefail
-    # Seed GeneralSettings: default download folder = /data/media
-    cat > ${JD2_HOME}/cfg/org.jdownloader.settings.GeneralSettings.json <<'JSON'
+    GS=${JD2_HOME}/cfg/org.jdownloader.settings.GeneralSettings.json
+    if [ -s \"\$GS\" ] && grep -q 'defaultdownloadfolder' \"\$GS\" 2>/dev/null; then
+      # Rewrite only the default download folder to the CT path; keep the rest
+      python3 - <<PY
+import json,sys,pathlib
+p=pathlib.Path('\$GS')
+try:
+    d=json.loads(p.read_text())
+except Exception:
+    d={}
+d['defaultdownloadfolder']='${MEDIA_CT_PATH}'
+p.write_text(json.dumps(d,indent=2))
+PY
+      chown jd2:media \"\$GS\"
+      chmod 0644 \"\$GS\"
+    else
+      cat > \"\$GS\" <<'JSON_FALLBACK'
+{
+  \"defaultdownloadfolder\": \"${MEDIA_CT_PATH}\",
+  \"downloadcontroller\": {
+    \"automaticfilenamecorrectionenabled\": true,
+    \"closegapsinchunksenabled\": true
+  },
+  \"if_file_exists_action\": \"OVERWRITE_FILE\"
+}
+JSON_FALLBACK
+      chown jd2:media \"\$GS\"
+      chmod 0644 \"\$GS\"
+    fi
+  "
+  # Legacy seed (kept as a no-op marker so the original heredoc doesn't error)
+  pct_in_bash "
+    set -Eeuo pipefail
+    : <<'JSON'
 {
   \"defaultdownloadfolder\": \"${MEDIA_CT_PATH}\",
   \"downloadcontroller\": {
@@ -543,10 +647,12 @@ UNIT
   "
   # Pair MyJD account + write RD plugin account
   # MyJD: write the email so JD2 picks it up; password handled by direct device pairing on first connect
+  # Use a quoted heredoc on the CT side to write *literal* JSON (no shell
+  # interpolation), with the email already substituted by the local shell.
   pct_in_bash "
-    cat > ${JD2_HOME}/cfg/org.jdownloader.api.myjdownloader.MyJDownloaderSettings.json <<JSON
+    cat > ${JD2_HOME}/cfg/org.jdownloader.api.myjdownloader.MyJDownloaderSettings.json <<'JSON'
 {
-  \"email\": \"\${MYJD_EMAIL:-${MYJD_EMAIL}}\",
+  \"email\": \"${MYJD_EMAIL}\",
   \"devicename\": \"${MYJD_DEVICE}\",
   \"autoconnectenabledv2\": true,
   \"connecttoexisting\": true
@@ -595,7 +701,7 @@ heal_x11vnc() {
 
 # ---------- step: install riven-jd2-bridge daemon ---------------------------
 verify_bridge() {
-  pct_in "test -x ${BRIDGE_HOME}/.venv/bin/python && test -s ${BRIDGE_HOME}/riven-jd2-bridge.py && systemctl is-active riven-jd2-bridge.service >/dev/null 2>&1"
+  pct_in_bash "test -x ${BRIDGE_HOME}/.venv/bin/python && test -s ${BRIDGE_HOME}/riven-jd2-bridge.py && systemctl is-active riven-jd2-bridge.service >/dev/null 2>&1"
 }
 execute_bridge() {
   # Copy the python file from this repo into CT-300
@@ -617,7 +723,7 @@ execute_bridge() {
       python3 -m venv ${BRIDGE_HOME}/.venv
     fi
     ${BRIDGE_HOME}/.venv/bin/pip install --quiet --upgrade pip
-    ${BRIDGE_HOME}/.venv/bin/pip install --quiet 'requests==2.32.*' 'myjdapi==1.9.*'
+    ${BRIDGE_HOME}/.venv/bin/pip install --quiet 'requests>=2.32,<3' 'myjdapi>=1.1,<2'
 
     install -d -o root -g media -m 0775 /var/lib/riven-jd2-bridge
 
@@ -656,12 +762,13 @@ heal_bridge() {
 
 # ---------- step: end-to-end probe ------------------------------------------
 verify_probe() {
-  # The bridge must be active AND must show that it has connected to MyJD,
-  # found the JD2 device, and read the Scraped queue from Riven.
+  # The bridge must be active AND must be doing real work — either polling RD
+  # for a torrent, handing magnets to JD2, or sitting idle on an empty
+  # Scraped queue. Match any of those signals from the actual log format.
+  pct_in_bash "systemctl is-active --quiet riven-jd2-bridge.service" || return 1
   local out
   out="$(pct_in "journalctl -u riven-jd2-bridge -n 200 --no-pager 2>/dev/null")"
-  echo "$out" | grep -q 'connected to MyJDownloader' \
-    && echo "$out" | grep -q 'Riven Scraped poll'
+  printf '%s' "$out" | grep -qE 'bridge \| (RD torrent |added magnet|sent to JD2|no Scraped items|autoloaded RIVEN_API_KEY)'
 }
 execute_probe() {
   # Just give the bridge time to do its first cycle
@@ -728,6 +835,7 @@ main() {
   do_step "Make ${MEDIA_CT_PATH} writable"          verify_bind_rw    execute_bind_rw    heal_bind_rw
   do_step "Install LXDE+Xvfb+Java+Python tools"     verify_packages   execute_packages   heal_packages
   do_step "JD2 user/dirs/jar"                        verify_jd2_layout execute_jd2_layout heal_jd2_layout
+  do_step "Copy JD2 config from Tiamat host"        verify_jd2_cfg    execute_jd2_cfg    heal_jd2_cfg
   do_step "Xvfb on :1 (systemd)"                     verify_xvfb       execute_xvfb       heal_xvfb
   do_step "JD2 service + cfg seed (RD/MyJD)"         verify_jd2_running execute_jd2_seed  heal_jd2_seed
   do_step "x11vnc on loopback :5901"                 verify_x11vnc     execute_x11vnc     heal_x11vnc

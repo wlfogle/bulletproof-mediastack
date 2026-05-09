@@ -84,6 +84,11 @@ MYJD_EMAIL = os.environ.get("MYJD_EMAIL", "").strip()
 MYJD_PASSWORD = os.environ.get("MYJD_PASSWORD", "").strip()
 MYJD_DEVICE = os.environ.get("MYJD_DEVICE", "mediastack-jd2").strip()
 
+# Optional Jellyfin kick: when we mark an item JD_DONE, POST /Library/Refresh
+# so Jellyfin scans without waiting for the inotify watch to fire.
+JELLYFIN_URL = os.environ.get("JELLYFIN_URL", "http://192.168.12.30:8096").rstrip("/")
+JELLYFIN_API_KEY = os.environ.get("JELLYFIN_API_KEY", "").strip()
+
 RD_BASE = "https://api.real-debrid.com/rest/1.0"
 
 # ----------------------------------------------------------------------------- env autoload
@@ -256,6 +261,14 @@ class RD:
             self.s.delete(f"{RD_BASE}/torrents/delete/{torrent_id}", timeout=15)
         except Exception:  # noqa: BLE001
             pass
+
+    def list_torrents(self, limit: int = 200) -> list[dict]:
+        """Enumerate all torrents in the RD account."""
+        r = self.s.get(
+            f"{RD_BASE}/torrents", params={"limit": limit}, timeout=20
+        )
+        r.raise_for_status()
+        return r.json() or []
 
     def wait_until_ready(self, torrent_id: str) -> dict:
         deadline = time.time() + RD_TIMEOUT_MIN * 60
@@ -529,28 +542,109 @@ class Bridge:
                     self.riven.blacklist_stream(riven_id, s["id"])
                 except Exception:  # noqa: BLE001
                     pass
+            # Kick Jellyfin so it doesn't wait for inotify (which can be flaky
+            # across LXC bind mounts). Best-effort; failure is non-fatal.
+            self._kick_jellyfin(item)
         else:
             log.info("item %s: JD2 still downloading %s", riven_id, pkg_name)
+
+    def _kick_jellyfin(self, item: dict) -> None:
+        if not JELLYFIN_API_KEY:
+            log.debug("no JELLYFIN_API_KEY in env; skipping refresh kick")
+            return
+        try:
+            r = requests.post(
+                f"{JELLYFIN_URL}/Library/Refresh",
+                headers={"X-Emby-Token": JELLYFIN_API_KEY},
+                timeout=10,
+            )
+            if r.ok:
+                log.info("item %s: Jellyfin /Library/Refresh OK", item.get("id"))
+            else:
+                log.warning(
+                    "item %s: Jellyfin refresh returned %s", item.get("id"), r.status_code
+                )
+        except Exception as e:  # noqa: BLE001
+            log.warning("Jellyfin refresh kick failed: %s", e)
+
+    # -- RD direct sweep ------------------------------------------------------
+    def sweep_rd_account(self) -> None:
+        """Poll the Real-Debrid account directly. For every torrent with
+        status='downloaded' that isn't already in our state.db, queue it as a
+        synthetic item and run it through the JD2-send stage. This catches
+        items that Riven added but moved past 'Scraped' state before we saw them.
+        """
+        try:
+            torrents = self.rd.list_torrents(limit=200)
+        except Exception as e:  # noqa: BLE001
+            log.warning("RD list_torrents failed: %s", e)
+            return
+        ready = [t for t in torrents if t.get("status") == "downloaded"]
+        log.info("RD sweep: %d/%d torrents ready", len(ready), len(torrents))
+        for t in ready:
+            rd_id = t.get("id")
+            name = t.get("filename") or t.get("original_filename") or f"rd-{rd_id}"
+            # Use a deterministic synthetic riven_id derived from rd torrent id so
+            # state.db dedup works even though Riven has no concept of this item.
+            synthetic_key = -abs(hash(rd_id)) % (10**9)
+            st = get_item(self.db, synthetic_key) or {}
+            if st.get("status") in ("JD_DONE", "JD_QUEUED"):
+                continue
+            # Build a synthetic item record. Always treat as movie/tv based on filename heuristic.
+            sub = "tv" if re.search(r"s\d{1,2}e?\d{0,2}|season", name, re.I) else "movies"
+            dest = f"{MEDIA_ROOT.rstrip('/')}/{sub}/{safe_dirname(name)}"
+            try:
+                pkg_name = pathlib.Path(dest).name
+                # Skip if dest already has files
+                try:
+                    if pathlib.Path(dest).is_dir() and any(pathlib.Path(dest).iterdir()):
+                        upsert_item(self.db, synthetic_key, title=name, status="JD_DONE")
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
+                upsert_item(self.db, synthetic_key, title=name, rd_torrent_id=rd_id, status="RD_READY")
+                # Get fresh info for links + unrestrict
+                info = self.rd.torrent_info(rd_id)
+                rd_links = info.get("links") or []
+                if not rd_links:
+                    log.warning("RD torrent %s ready but no links; skipping", rd_id)
+                    continue
+                direct: list[str] = []
+                for link in rd_links:
+                    try:
+                        direct.append(self.rd.unrestrict(link))
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("unrestrict %s failed: %s", link, e)
+                if not direct:
+                    continue
+                os.makedirs(dest, exist_ok=True)
+                log.info("RD-sweep: posting %d link(s) to JD2 -> %s", len(direct), dest)
+                self.jd.add_links(direct, package_name=pkg_name, dest_folder=dest)
+                upsert_item(self.db, synthetic_key, package_name=pkg_name, status="JD_QUEUED")
+            except Exception as e:  # noqa: BLE001
+                log.error("RD-sweep: failed processing %s (%s): %s", rd_id, name, e)
+                upsert_item(self.db, synthetic_key, status="FAILED", last_error=str(e)[:500])
 
     # -- main loop ------------------------------------------------------------
     def loop(self) -> None:
         log.info("connected to MyJDownloader; entering main loop (poll=%ds)", POLL_SECONDS)
         while True:
             try:
-                if not self.riven.health():
-                    log.warning("Riven health check failed; will retry")
-                    time.sleep(POLL_SECONDS)
-                    continue
-                items = self.riven.scraped_items(limit=200)
-                log.info("Riven Scraped poll: %d item(s)", len(items))
-                for it in items:
-                    self.process_item(it)
-                # also keep sweeping in-flight ones
+                # PRIMARY PATH: poll RD directly. Catches every torrent in the
+                # account regardless of what Riven thinks the state is.
+                self.sweep_rd_account()
+                # SECONDARY PATH: also poll Riven Scraped queue for items where
+                # Riven hasn't yet added a magnet to RD.
+                if self.riven.health():
+                    items = self.riven.scraped_items(limit=200)
+                    log.info("Riven Scraped poll: %d item(s)", len(items))
+                    for it in items:
+                        self.process_item(it)
+                # Sweep in-flight bridge-state items (from either path)
                 cur = self.db.execute(
-                    "SELECT riven_id FROM items WHERE status IN ('RD_ADDED','RD_READY','JD_QUEUED')"
+                    "SELECT riven_id FROM items WHERE status IN ('JD_QUEUED')"
                 )
                 for (rid,) in cur.fetchall():
-                    # Build a minimal item dict to drive subsequent stages
                     self.process_item({"id": rid, "title": "(in-flight)"})
             except Exception as e:  # noqa: BLE001
                 log.error("main loop error: %s\n%s", e, traceback.format_exc(limit=3))
