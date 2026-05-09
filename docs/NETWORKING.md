@@ -144,7 +144,7 @@ Traefik hot-reloads it immediately (no restart needed).
 ## DNS / Remote Access on Bahamut
 
 Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi) runs:
-- AdGuard Home (primary DNS): `:53`, setup UI `:8081`
+- AdGuard Home (primary DNS): `:53`, admin UI `:8081`
 - wg-easy (remote VPN mgmt): `http://192.168.12.244:51821`
 - WireGuard tunnel endpoint: `:51820/udp`
 - Vaultwarden behind Caddy: `https://192.168.12.244` (TLS via DuckDNS)

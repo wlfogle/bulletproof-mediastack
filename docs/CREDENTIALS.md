@@ -64,7 +64,7 @@
 
 | Service | URL | User | Pass | Status |
 |---|---|---|---|---|
-| AdGuard Home | http://192.168.12.244:3000/ | `adguard` | `adguard` | ⏳ change in Settings → General |
+| AdGuard Home | http://192.168.12.244:8081/ | `adguard` | `adguard` | ⏳ change in Settings → General |
 | wg-easy | http://192.168.12.244:51821/ | (master pw hash) | (master pw) | 🔒 |
 | Vaultwarden mirror | https://192.168.12.244/ | (your master) | (your master) | 🔒 |
 | DietPi Dashboard | http://192.168.12.244:5252/ | (DietPi default) | — | 🔒 |
@@ -113,3 +113,5 @@ Open the URL, log in / sign up. Use the matching `servicename / servicename` val
 2. Tap **Search & Add** → first time: sign up as `riven / riven`. Search a title → click **Request**.
 3. Wait ~30–60 s. Tap **Jellyfin** → log in `jellyfin / jellyfin` → the title is in your library.
 4. For service control / logs / restart, tap **Cockpit** → log in `cockpit / cockpit`.
+
+MetaTube API Key: ^9NR9[tq03Nwl#3)

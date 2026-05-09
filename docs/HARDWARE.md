@@ -62,7 +62,7 @@ RX 580 (XFX) is **fully configured for VFIO passthrough** — no setup needed:
 | **Networking** | Gigabit Ethernet + 802.11AC Wi-Fi (use wired) |
 | **OS** | DietPi (Debian Bookworm base) |
 | **IP** | 192.168.12.244 (static) |
-| **Services** | AdGuard Home (primary DNS), Caddy + DuckDNS (reverse proxy + TLS), WG-Easy (WireGuard mgmt), Vaultwarden (Docker), DietPi Dashboard, TigerVNC, Tailscale |
+| **Services** | AdGuard Home (primary DNS, admin UI on `:8081`), Caddy + DuckDNS (reverse proxy + TLS), WG-Easy (WireGuard mgmt), Vaultwarden (Docker), DietPi Dashboard, TigerVNC, Tailscale |
 
 > Vaultwarden is fronted by Caddy for automatic TLS. AdGuard is the LAN's
 > primary resolver; fallback is `1.1.1.1`.
