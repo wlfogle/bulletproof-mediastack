@@ -55,7 +55,7 @@ CFG = {
     "TMDB_API_KEY":    os.environ.get("UG_TMDB_API_KEY", ""),
     "TMDB_REGION":     os.environ.get("UG_TMDB_REGION", "US"),
     "TMDB_PROVIDERS":  os.environ.get("UG_TMDB_PROVIDERS",
-                                     "Netflix:8,Max:1899,Disney+:337,Peacock:386"),
+                                     "Netflix:8,Amazon:9,Max:1899,Disney+:337,Peacock:386"),
     "TMDB_LIMIT":      int(os.environ.get("UG_TMDB_LIMIT", "30")),
     # source: Jellyfin local library
     "JELLYFIN_URL":    os.environ.get("UG_JELLYFIN_URL", "http://127.0.0.1:8096"),
@@ -322,6 +322,7 @@ def xmltv_to_records(path: str, source: str, server_id: str,
 # ──────────────────────────────────────────────────────────────────────────────
 SVOD_SEARCH_TPL = {
     "Netflix":  "https://www.netflix.com/search?q={q}",
+    "Amazon":   "https://www.amazon.com/s?k={q}&i=instant-video",
     "Max":      "https://play.max.com/search?q={q}",
     "Disney+":  "https://www.disneyplus.com/search?q={q}",
     "Peacock":  "https://www.peacocktv.com/search?q={q}",

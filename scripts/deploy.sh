@@ -66,7 +66,9 @@ DNS="${DNS:-8.8.8.8 1.1.1.1}"
 BRIDGE="${BRIDGE:-vmbr0}"
 FORCE_RECREATE="${FORCE_RECREATE:-0}"
 TAILSCALE_AUTHKEY="${TAILSCALE_AUTHKEY:-}"
-UV_VERSION="${UV_VERSION:-0.5.16}"
+# UV_VERSION is now informational only — the installer queries the GitHub API
+# for the actual latest tag at runtime so we never pin a stale version.
+UV_VERSION="${UV_VERSION:-latest}"
 PNPM_VERSION="${PNPM_VERSION:-10.28.0}"
 # Bind-mount the existing on-host media library into CT-300 as /data/media
 # (read-only). This keeps the pre-existing /mnt/hdd/media library (movies, tv,
@@ -361,27 +363,54 @@ echo "Node $(node -v), npm $(npm -v)"
 npm install -g "pnpm@${PNPM_VERSION}"
 pnpm --version >/dev/null
 
-# uv (fast Python package manager). Try pinned tarball first; fall back to
-# astral.sh installer if GitHub release URL is being flaky.
-install_uv_pinned() {
-  local v="$1"
-  local url="https://github.com/astral-sh/uv/releases/download/${v}/uv-x86_64-unknown-linux-gnu.tar.gz"
-  curl -fsSL --max-time 30 "$url" -o /tmp/uv.tar.gz || return 1
-  tar -xzf /tmp/uv.tar.gz -C /tmp
-  install -m 0755 /tmp/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/uv
+# uv (fast Python package manager) — self-healing 3-strategy install.
+# Strategy 1: query GitHub API for the latest release tag, download tarball.
+# Strategy 2: astral.sh shell installer; relocate the binary to /usr/local/bin.
+# Strategy 3: pip install (last resort, slow but reliable).
+install_uv_via_github_api() {
+  local tag
+  tag=$(curl -fsSL --max-time 15 https://api.github.com/repos/astral-sh/uv/releases/latest \
+        | jq -r '.tag_name // empty')
+  [ -n "$tag" ] && [ "$tag" != "null" ] || return 1
+  local url="https://github.com/astral-sh/uv/releases/download/${tag}/uv-x86_64-unknown-linux-gnu.tar.gz"
+  curl -fsSL --max-time 60 "$url" -o /tmp/uv.tar.gz || return 1
+  tar -xzf /tmp/uv.tar.gz -C /tmp || return 1
+  install -m 0755 /tmp/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/uv || return 1
   install -m 0755 /tmp/uv-x86_64-unknown-linux-gnu/uvx /usr/local/bin/uvx 2>/dev/null || true
   rm -rf /tmp/uv.tar.gz /tmp/uv-x86_64-unknown-linux-gnu
+  command -v uv >/dev/null 2>&1
 }
-install_uv_latest() {
+install_uv_via_astral_installer() {
   curl -fsSL --max-time 30 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh || return 1
-  UV_INSTALL_DIR=/usr/local/bin sh /tmp/uv-install.sh -q || return 1
+  # Astral's installer drops uv at $HOME/.local/bin or honors various env knobs
+  # depending on version. Run it, then locate the binary in known paths and
+  # relocate to /usr/local/bin so PATH ordering doesn't matter.
+  sh /tmp/uv-install.sh -q || true
   rm -f /tmp/uv-install.sh
+  for cand in "$HOME/.local/bin/uv" /root/.local/bin/uv /root/.cargo/bin/uv; do
+    if [ -x "$cand" ]; then
+      install -m 0755 "$cand" /usr/local/bin/uv
+      install -m 0755 "${cand%uv}uvx" /usr/local/bin/uvx 2>/dev/null || true
+      break
+    fi
+  done
+  command -v uv >/dev/null 2>&1
+}
+install_uv_via_pip() {
+  command -v pip3 >/dev/null 2>&1 || return 1
+  pip3 install --break-system-packages --quiet uv 2>/dev/null || return 1
+  command -v uv >/dev/null 2>&1
 }
 if ! command -v uv >/dev/null 2>&1; then
-  install_uv_pinned "$UV_VERSION" || install_uv_latest \
-    || { echo "ERR: failed to install uv"; exit 1; }
+  echo "Installing uv ..."
+  install_uv_via_github_api      && echo "  uv: GitHub API path" \
+    || install_uv_via_astral_installer && echo "  uv: astral installer path" \
+    || install_uv_via_pip               && echo "  uv: pip fallback path" \
+    || { echo "ERR: failed to install uv via all 3 strategies"; exit 1; }
 fi
-uv --version >/dev/null
+command -v uv >/dev/null 2>&1 || { echo "ERR: uv not on PATH after install"; exit 1; }
+uv --version >/dev/null || { echo "ERR: uv binary not functional"; exit 1; }
+echo "  uv: $(uv --version)"
 
 # Service users (riven runs as 1000:1000 to align with Jellyfin reading /mount)
 getent group media >/dev/null || groupadd -g 1000 media

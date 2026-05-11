@@ -24,6 +24,8 @@ All native systemd services in CT-300 (no Docker):
 - `yttv-scraper.service` (oneshot) — parses `/var/lib/yttv-scraper/browse.json` into `/data/streaming/yttv/{yttv.m3u, yttv-epg.xml, yttv-channels.json}`.
 - `yttv-scraper.timer` — every 30 min.
 
+
+
 On the **Tiamat host**:
 - `disk-space-watchdog.service` (oneshot) — pauses Riven→JD2 + qBit + evicts hardlinked torrent copies when `/mnt/hdd` exceeds the threshold; cleans `/` (journal, apt, pnpm, vzdump prune) when SSD pressure builds.
 - `disk-space-watchdog.timer` — every 5 min.
