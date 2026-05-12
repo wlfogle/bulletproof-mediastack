@@ -1,10 +1,68 @@
 ⚡ Storage Strategy: The "Hybrid" Advantage
 
-Your 225GB SSD and 1.4TB HDD allow for a perfect tiering system:
+Your 225GB SSD and 1.8TB HDD use a two-tier storage system:
 
-    The SSD (Speed): This is where Proxmox and your CT-300 rootfs live. Because your stack uses RivenVFS, the "disk thrashing" is gone, but having the Postgres database and Jellyfin metadata on this SSD ensures the UI feels snappy and "instant."
+    The SSD (Speed) — `local-ssd` / pve-ssd (200GB thin pool, ~10% used):
+      - CT-300 (mediastack) rootfs — 24GB, primary Jellyfin + Riven stack
+      - CT-231 (jellyfin) rootfs  — 16GB, dedicated Jellyfin instance
+      - ~180GB free for future migrations
+      Both Jellyfin instances, Postgres metadata, and RivenVFS state live here.
+      The SSD eliminates the I/O bottleneck that previously caused CT-231 to
+      hang during startup when it shared the HDD with JDownloader writes.
 
-    The HDD (Safety): Since the 1.4TB drive is no longer in the active "streaming" path, it’s the perfect place for Proxmox backups (vzdump). If the SSD fails, you can restore your entire stack in minutes.
+    The HDD (Bulk Storage) — `local-lvm` / pve (1.67TB thin pool, 88% used):
+      - Proxmox root (96GB)
+      - media-hdd LV (1.46TB → /mnt/hdd) — media library, AI models, torrents
+      - ~30 container rootfs disks (4–32GB each)
+      - VM-901 Windows gaming disk (300GB, currently empty)
+      - VM-990 Home Assistant (32GB)
+
+⚠️  HDD Capacity Issues (assessed 2026-05-11):
+
+    /mnt/hdd is at 100% (1.4TB used / 1.5TB available):
+      - /mnt/hdd/media/     — 1.1TB  (media library)
+      - /mnt/hdd/models/    — 247GB  (AI models for Ziggy/Open WebUI)
+      - /mnt/hdd/torrents/  — 33GB   (active/seeding torrents)
+      - /mnt/hdd/downloads/ — 4.5GB  (JDownloader)
+
+    The thin pool is at 88% — high utilization degrades I/O performance due to
+    fragmented block allocation. Combined with concurrent writes (JDownloader,
+    subliminal), this caused 80% iowait and startup hangs on CT-231 before the
+    SSD migration.
+
+    No space remains for vzdump backups — the original safety-net strategy is
+    currently non-functional.
+
+📋 Resolution Plan:
+
+    Phase 1 — Immediate Space Recovery (~280GB):
+      a) Move or purge /mnt/hdd/models/ (247GB). Ziggy (CT-900) is stopped
+         (onboot: 0), so these models are idle. Relocate to external USB
+         storage or delete unused model files.
+      b) Clean /mnt/hdd/torrents/ (33GB) — purge completed/stale seeds.
+      c) Clean /mnt/hdd/downloads/ (4.5GB) — remove completed downloads.
+
+    Phase 2 — Thin Pool Cleanup:
+      a) Remove VM-901 empty 300GB disk if the Windows gaming VM is unused.
+      b) Remove stopped/deprecated container disks:
+         - CT-278 CrowdSec (stopped, 2×8GB)
+         - CT-280 RetroArch (stopped, 8GB)
+         - CT-900 Open WebUI (stopped, 32GB)
+      c) Run `fstrim -av` inside active containers to return freed blocks
+         to the thin pool.
+
+    Phase 3 — Migrate I/O-Sensitive Containers to SSD:
+      With ~180GB free on local-ssd, move these small but I/O-heavy disks:
+      - CT-106 PostgreSQL (8GB) — database I/O benefits most from SSD
+      - CT-210 Prowlarr (8GB) — frequent indexer queries
+      - CT-214 Sonarr (8GB) — metadata DB
+      - CT-215 Radarr (8GB) — metadata DB
+      Total: ~32GB additional, leaving ~148GB free on SSD.
+
+    Phase 4 — Restore Backup Strategy:
+      Once /mnt/hdd has free space, configure vzdump to back up critical
+      containers (CT-300, CT-231, CT-106) to /mnt/hdd/backups/ on a
+      weekly schedule. Target: keep last 2 rotations per container.
 
 🎬 GPU: XFX Radeon RX 580 (4GB)
 
