@@ -214,6 +214,8 @@ TURBO_TELEMETRY_DISABLED=1
 AUTH_PROVIDERS='credentials'
 NODE_ENV='production'
 REDIS_IS_EXTERNAL='true'
+PORT=3010
+HOSTNAME=127.0.0.1
 EOF
   chmod 0600 "\$HOMARR_ENV"
   echo "[homarr] wrote new \$HOMARR_ENV (mode 0600)"
@@ -240,6 +242,18 @@ EOF
 
 install -d /etc/nginx/templates
 [ -f '${HOMARR_DIR}/nginx.conf' ] && install -m 0644 '${HOMARR_DIR}/nginx.conf' /etc/nginx/templates/nginx.conf
+
+# The tarball ships port 3000 as the upstream default, but CT-300 runs
+# Riven on :3000, so Homarr's Next.js is on PORT=3010 (set in homarr.env).
+# Patch the template to proxy to 3010 and add buffer settings to prevent
+# "upstream sent too big header" errors from the Next.js auth layer.
+if [ -f /etc/nginx/templates/nginx.conf ]; then
+  sed -i 's|\(proxy_pass http://\${HOSTNAME}:\)3000;|\13010;|' /etc/nginx/templates/nginx.conf
+  # Inject buffer settings into the http block if not already present
+  if ! grep -q 'proxy_buffer_size' /etc/nginx/templates/nginx.conf; then
+    sed -i '/^http {/a\    # Prevent "upstream sent too big header" errors\n    proxy_buffer_size          128k;\n    proxy_buffers              4 256k;\n    proxy_busy_buffers_size    256k;' /etc/nginx/templates/nginx.conf
+  fi
+fi
 # Disable system nginx — Homarr's run.sh launches its own on :${HOMARR_PORT}
 systemctl disable --now nginx >/dev/null 2>&1 || true
 
