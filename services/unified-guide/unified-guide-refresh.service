@@ -1,0 +1,12 @@
+[Unit]
+Description=Unified Guide aggregator refresh (oneshot)
+Documentation=https://github.com/wlfogle/bulletproof-mediastack
+After=network-online.target unified-guide.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/unified-guide/env
+WorkingDirectory=/opt/unified-guide
+ExecStart=/usr/bin/python3 /opt/unified-guide/server.py refresh
+Nice=10

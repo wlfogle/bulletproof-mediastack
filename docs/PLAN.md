@@ -64,7 +64,7 @@ Laptop — GPU inference server (192.168.12.172)
 └── Tdarr node (Phase 6)                  Batch NVENC transcoding worker
 
 Bahamut (Raspberry Pi 4B 2GB) — 192.168.12.244
-├── AdGuard Home :53/:3000    Network-wide DNS + ad-blocking (sole instance)
+├── AdGuard Home :53/:8081    Network-wide DNS + ad-blocking (sole instance)
 ├── wg-easy :51821/:51820     Remote client VPN access
 └── Vaultwarden :443          via Caddy
 

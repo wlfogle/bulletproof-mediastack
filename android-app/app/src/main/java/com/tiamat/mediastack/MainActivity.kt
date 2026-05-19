@@ -57,9 +57,10 @@ class MainActivity : AppCompatActivity() {
                 AlertDialog.Builder(this)
                     .setTitle("TiamatsStack")
                     .setMessage(
-                        "Search & add content to your homelab.\n\n" +
-                        "The arr stack downloads via qBittorrent\n" +
-                        "and Jellyfin/Plex auto-import media.\n\n" +
+                        "Search & watch in seconds.\n\n" +
+                        "Riven (CT-300:3000) finds the title and pulls it\n" +
+                        "from Real-Debrid via RivenVFS at /mount,\n" +
+                        "then Jellyfin (CT-300:8096) plays it.\n\n" +
                         "Tiamat @ 192.168.12.242\n" +
                         "v${BuildConfig.VERSION_NAME}"
                     )

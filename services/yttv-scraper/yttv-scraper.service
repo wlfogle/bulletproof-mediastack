@@ -1,0 +1,15 @@
+[Unit]
+Description=YouTube TV scraper -> M3U + XMLTV (oneshot)
+Documentation=https://github.com/wlfogle/bulletproof-mediastack
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/yttv-scraper/browse.json
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/yttv-scraper/env
+ExecStart=/usr/bin/python3 /opt/yttv-scraper/yttv_scraper.py
+Nice=15
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/data/streaming /var/lib/yttv-scraper

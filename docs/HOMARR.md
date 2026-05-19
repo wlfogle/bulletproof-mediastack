@@ -81,7 +81,7 @@ Add each app via **Add tile → App**. Set the URL, icon (auto-detected from URL
 ### Bahamut (Pi)
 | App | URL | Icon |
 |-----|-----|------|
-| AdGuard Home | http://192.168.12.244:3000 | adguard-home |
+| AdGuard Home | http://192.168.12.244:8081 | adguard-home |
 | DietPi Dashboard | http://192.168.12.244:5252 | dietpi |
 
 ## Widgets to Add

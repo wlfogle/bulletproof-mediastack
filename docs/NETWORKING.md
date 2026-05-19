@@ -5,7 +5,7 @@
 Router (192.168.12.1)
 ├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
 ├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
-├── Laptop                    → 192.168.12.172 (DHCP reservation)
+├── Laptop                    → 192.168.12.172 (DHCP reservation, may appear as .204 — verify with `ip addr show enp4s0`)
 ├── Fire TV                   → DHCP
 └── Tablet / phones           → DHCP
 ```
@@ -46,40 +46,58 @@ iface vmbr0 inet static
 |---|---|---|
 | CT-100 `wireguard` | WireGuard server | `:51820/udp` |
 | CT-101 `wg-proxy` | WireGuard client + TinyProxy | `http://192.168.12.101:8888` |
-| CT-102 `flaresolverr` | Cloudflare bypass | `http://192.168.12.102:8191` |
+| CT-102 `n8n` | Workflow automation / AI bridge | `http://192.168.12.102:5678` |
 | CT-103 `traefik` | Reverse proxy | `:80`, `:443`, `:8080` |
 | CT-104 `vaultwarden` | Password manager backend | `https://192.168.12.104` (Caddy TLS) |
 | CT-105 `valkey` | Redis-compatible cache | `:6379` |
 | CT-106 `postgresql` | Database | `:5432` |
 | CT-107 `authentik` | SSO | `http://192.168.12.107:9000` |
+| CT-108 `flaresolverr` | Cloudflare bypass | `http://192.168.12.108:8191` |
+| CT-109 `byparr` | FlareSolverr alternative (stopped/standby) | `http://192.168.12.109:8191` |
+| CT-112 `byparr` | FlareSolverr alternative (active) | `http://192.168.12.109:8191` |
 
-### Download stack (static)
-| Service | URL |
-|---|---|
-| Prowlarr (CT-210) | `http://192.168.12.210:9696` |
-| Jackett (CT-211) | `http://192.168.12.211:9117` — fallback indexer (native, hdd-ct storage) |
-| qBittorrent (CT-212) | `http://192.168.12.212:8080` |
-| Deluge-fallback (CT-213) | `http://192.168.12.213:8112` — fallback download client (native, hdd-ct storage) |
-| Sonarr (CT-214) | `http://192.168.12.214:8989` |
-| Radarr (CT-215) | `http://192.168.12.225:7878` |
-| Readarr (CT-217) | `http://192.168.12.217:8787` |
-| Whisparr (CT-219) | `http://192.168.12.219:6969` |
-| Sonarr Extended (CT-220) | `http://192.168.12.220:8989` |
-| Autobrr (CT-223) | `http://192.168.12.223:7474` |
-| Deluge (CT-224) | `http://192.168.12.224:8112` |
+### Download stack
+| Service | URL | Status |
+|---|---|---|
+| Prowlarr (CT-210) | `http://192.168.12.210:9696` | running |
+| Jackett (CT-211) | `http://192.168.12.211:9117` — fallback indexer (hdd-ct) | stopped |
+| qBittorrent (CT-212) | `http://192.168.12.212:8080` | running |
+| rdtclient (CT-213) | `http://192.168.12.213` — Real-Debrid client (replaces Deluge-fallback) | running |
+| Sonarr (CT-214) | `http://192.168.12.214:8989` | running |
+| Radarr (CT-215) | `http://192.168.12.225:7878` | running |
+| Decluttarr (CT-216) | `http://192.168.12.216` — queue cleaner for *arr | running |
+| Readarr (CT-217) | `http://192.168.12.217:8787` | stopped |
+| Recyclarr (CT-245) | `http://192.168.12.245` — quality profile sync | running |
+
+> CT-219 (Whisparr), CT-220 (Sonarr Extended), CT-223 (Autobrr), CT-224 (Deluge) — decommissioned.
+
+### Riven mediastack
+| Service | URL | Notes |
+|---|---|---|
+| CT-300 `mediastack` | `http://192.168.12.30:3000` (Riven UI) / `:8080` (backend) / `:8096` (Jellyfin) | Privileged Debian 12 LXC — Riven + RivenVFS + Jellyfin + Postgres + Redis |
+
+> This replaced the *arr+torrent stack for primary streaming. See `README.md` for architecture.
 
 ### Media servers
-| Service | URL |
-|---|---|
-| Plex (CT-230) | `http://192.168.12.230:32400/web` |
-| Jellyfin (CT-231) | `http://192.168.12.231:8096` |
+| Service | URL | Status |
+|---|---|---|
+| Plex (CT-230) | `http://192.168.12.230:32400/web` | stopped |
+| Jellyfin (CT-231) | `http://192.168.12.231:8096` | running |
 
 ### VMs
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
-| VM-901 `windows-gaming` | Windows 11 gaming + PlayOn | `192.168.12.201` | RX 580 GPU passthrough, sdb disk passthrough |
-| VM-500 `haos` | Home Assistant OS | `192.168.12.250` | Smart home hub |
-| VM-200 `alexa-bridge` | Alexa media bridge | `192.168.12.200` | Ubuntu |
+| VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough, sdb disk passthrough |
+| VM-990 `haos17-1` | Home Assistant OS | DHCP (`.250` static reservation) | Smart home hub — was VM-500 |
+
+### AI / auxiliary CTs
+| CT | Purpose | URL |
+|---|---|---|
+| CT-900 `ziggy` | Open WebUI + SearXNG (stopped/standby) | `http://192.168.12.250:3000` |
+
+> `n8n` is classified as infrastructure, not AI. CT-102 was recreated 2026-05-19; its Ollama URL must match the current laptop IP (see Laptop note above).
+
+> CT-200 `alexa-media-bridge` is an LXC at `192.168.12.200`, not a VM.
 
 ### Laptop NFS Exports (192.168.12.172)
 | Export path | Tiamat mount | Consumer |
@@ -133,6 +151,7 @@ Dynamic route files live in `infrastructure/traefik/dynamic/`.
 | `uptime.tiamat.local` | Uptime Kuma (CT-248) | `192.168.12.248:3001` |
 | `threadfin.tiamat.local` | Threadfin (CT-234) | `192.168.12.234:34400` |
 | `dispatcharr.tiamat.local` | Dispatcharr (CT-235) | `192.168.12.235:9191` |
+| `n8n.tiamat.local` | n8n (CT-102) | `192.168.12.102:5678` |
 
 \* CT-242 has static IP 192.168.12.151. CT-240 is DHCP — set a static reservation on the router.
 CT-242 runs Seerr natively (no Docker). Proxmox vmbr0 has static ARP for Radarr: `ip neigh replace 192.168.12.225 dev vmbr0 lladdr BC:24:11:2A:83:BB nud permanent`
@@ -144,7 +163,7 @@ Traefik hot-reloads it immediately (no restart needed).
 ## DNS / Remote Access on Bahamut
 
 Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi) runs:
-- AdGuard Home (primary DNS): `:53`, setup UI `:8081`
+- AdGuard Home (primary DNS): `:53`, admin UI `:8081`
 - wg-easy (remote VPN mgmt): `http://192.168.12.244:51821`
 - WireGuard tunnel endpoint: `:51820/udp`
 - Vaultwarden behind Caddy: `https://192.168.12.244` (TLS via DuckDNS)

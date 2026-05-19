@@ -1,29 +1,19 @@
-# Android build artifacts
-android-app/.gradle/
+
+android-app/**/*.apk
 android-app/app/build/
+android-app/app/.gradle/
 android-app/build/
-android-app/gradle/wrapper/gradle-wrapper.jar
-android-app/gradlew
-android-app/gradlew.bat
+android-app/.gradle/
+android-app/.idea/
 android-app/local.properties
-
-# Editor swap files
-*.kate-swp
-*.swp
-*~
-.idea/
-
-# Secrets (never commit)
-.env
-*.key
-*.pem
-
-# Local session logs / scratch notes (may contain API keys, passwords, etc.)
-fuckup_ai_agent.md
-session-*.md
-*.local-backup
-/etc/jellyfin-autoscan.env
-
-# OS junk
+# Android build output (must NOT be tracked)
 .DS_Store
-Thumbs.db
+.env
+*.local-backup
+.next.md.kate-swp
+*.pyc
+__pycache__/
+# python
+*.swp
+next.md
+nginx.conf

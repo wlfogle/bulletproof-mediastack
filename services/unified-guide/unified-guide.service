@@ -1,0 +1,21 @@
+[Unit]
+Description=Unified Guide HTTP server (CT-300)
+Documentation=https://github.com/wlfogle/bulletproof-mediastack
+After=network-online.target jellyfin.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+EnvironmentFile=-/etc/unified-guide/env
+WorkingDirectory=/opt/unified-guide
+ExecStart=/usr/bin/python3 /opt/unified-guide/server.py serve
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/cache/unified-guide /data/streaming /etc/unified-guide
+
+[Install]
+WantedBy=multi-user.target
