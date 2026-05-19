@@ -90,13 +90,12 @@ iface vmbr0 inet static
 | VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough, sdb disk passthrough |
 | VM-990 `haos17-1` | Home Assistant OS | DHCP (`.250` static reservation) | Smart home hub — was VM-500 |
 
-### AI CTs
+### AI / auxiliary CTs
 | CT | Purpose | URL |
 |---|---|---|
-| CT-102 `n8n` | Workflow automation — Self-Healing Code Assistant webhook → Ollama | `http://192.168.12.102:5678` |
 | CT-900 `ziggy` | Open WebUI + SearXNG (stopped/standby) | `http://192.168.12.250:3000` |
 
-> CT-102 was recreated 2026-05-19; Ollama URL in n8n workflow must match current laptop IP (see Laptop note above).
+> `n8n` is classified as infrastructure, not AI. CT-102 was recreated 2026-05-19; its Ollama URL must match the current laptop IP (see Laptop note above).
 
 > CT-200 `alexa-media-bridge` is an LXC at `192.168.12.200`, not a VM.
 
