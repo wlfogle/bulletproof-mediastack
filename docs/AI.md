@@ -35,8 +35,10 @@ Env values:
 ```bash
 OPENWEBUI_PORT=3000
 SEARXNG_PORT=8081
-OLLAMA_HOST=http://192.168.12.172:11434
+OLLAMA_HOST=http://192.168.12.204:11434
 ```
+
+> Laptop DHCP reservation is 192.168.12.172 but may be assigned 192.168.12.204 — always verify with `ip addr show enp4s0` before using.
 ## Open WebUI Configuration
 1. Open WebUI admin settings.
 2. Confirm Ollama endpoint matches `OLLAMA_HOST`.

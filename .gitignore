@@ -15,3 +15,5 @@ android-app/local.properties
 __pycache__/
 # python
 *.swp
+next.md
+nginx.conf
