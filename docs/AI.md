@@ -43,6 +43,21 @@ OLLAMA_HOST=http://192.168.12.204:11434
 1. Open WebUI admin settings.
 2. Confirm Ollama endpoint matches `OLLAMA_HOST`.
 3. Enable web search and set SearXNG endpoint.
+## Ollama Model Storage
+Models are stored on a dedicated second NVMe (`/dev/nvme0n1p2`, 337 GB):
+```
+/media/loufogle/73cf9511-0af0-4ac4-9d83-ee21eb17ff5d/models/
+```
+To tell Ollama to use this path:
+```bash
+# /etc/systemd/system/ollama.service.d/override.conf
+[Service]
+Environment="OLLAMA_MODELS=/media/loufogle/73cf9511-0af0-4ac4-9d83-ee21eb17ff5d/models"
+```
+As of 2026-05-20 the drive is **89% full (282/337 GB)**. The two largest models
+(`llama3.2-vision:90b` 54 GB, `llama3.3:70b` 42 GB) account for 96 GB;
+remove them if not actively used to restore headroom.
+
 ## Recommended Models for 12GB VRAM
 - `llama3.1:8b`
 - `qwen2.5:7b`
