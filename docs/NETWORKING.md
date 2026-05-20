@@ -61,7 +61,7 @@ iface vmbr0 inet static
 |---|---|---|
 | Prowlarr (CT-210) | `http://192.168.12.210:9696` | running |
 | Jackett (CT-211) | `http://192.168.12.211:9117` — fallback indexer (hdd-ct) | stopped |
-| qBittorrent (CT-212) | `http://192.168.12.212:8080` | running |
+| ~~qBittorrent (CT-212)~~ | ~~`http://192.168.12.212:8080`~~ | **destroyed** 2026-05-20 — Real-Debrid replaced torrenting |
 | rdtclient (CT-213) | `http://192.168.12.213` — Real-Debrid client (replaces Deluge-fallback) | running |
 | Sonarr (CT-214) | `http://192.168.12.214:8989` | running |
 | Radarr (CT-215) | `http://192.168.12.225:7878` | running |
@@ -139,7 +139,7 @@ Dynamic route files live in `infrastructure/traefik/dynamic/`.
 | `sonarr.tiamat.local` | Sonarr (CT-214) | `192.168.12.214:8989` |
 | `radarr.tiamat.local` | Radarr (CT-215) | `192.168.12.225:7878` |
 | `prowlarr.tiamat.local` | Prowlarr (CT-210) | `192.168.12.210:9696` |
-| `qbittorrent.tiamat.local` | qBittorrent (CT-212) | `192.168.12.212:8080` |
+| ~~`qbittorrent.tiamat.local`~~ | ~~qBittorrent (CT-212)~~ | ~~`192.168.12.212:8080`~~ — **destroyed** 2026-05-20 |
 | `jackett.tiamat.local` | Jackett (CT-211) | `192.168.12.211:9117` |
 | `deluge.tiamat.local` | Deluge fallback (CT-213) | `192.168.12.213:8112` |
 | `bazarr.tiamat.local` | Bazarr (CT-240) | `192.168.12.188:6767` \* |
@@ -150,7 +150,7 @@ Dynamic route files live in `infrastructure/traefik/dynamic/`.
 | `jellystat.tiamat.local` | Jellystat (CT-247) | `192.168.12.247:3000` |
 | `uptime.tiamat.local` | Uptime Kuma (CT-248) | `192.168.12.248:3001` |
 | `threadfin.tiamat.local` | Threadfin (CT-234) | `192.168.12.234:34400` |
-| `dispatcharr.tiamat.local` | Dispatcharr (CT-235) | `192.168.12.235:9191` |
+| ~~`dispatcharr.tiamat.local`~~ | ~~Dispatcharr (CT-235)~~ | ~~`192.168.12.235:9191`~~ — **destroyed** 2026-05-20 |
 | `n8n.tiamat.local` | n8n (CT-102) | `192.168.12.102:5678` |
 
 \* CT-242 has static IP 192.168.12.151. CT-240 is DHCP — set a static reservation on the router.

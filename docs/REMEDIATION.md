@@ -46,18 +46,16 @@
 - `qbittorrent` container routes all traffic through gluetun; if tunnel is broken the real IP leaks on every torrent connection **right now**
 - Fix: `docker logs gluetun --tail 100` to identify failure mode (auth error, dead endpoint, missing env); restart after fixing; verify with `docker exec gluetun curl https://ifconfig.me`
 
-### 4. CT-110 and CT-111 share identical MAC + IP — CRITICAL
+### 4. ~~CT-110 and CT-111 share identical MAC + IP~~ — RESOLVED 2026-05-20
 - Both assigned `hwaddr=BC:24:11:E0:78:C6` and `ip=192.168.12.251/24`
-- Both are "pulse" (Proxmox monitoring community script) and both are `onboot: 1`
-- ARP conflict drops random packets for both CTs at the same time
-- CT-110 has a description ("FileBrowser at :8183") and is privileged — keep this one
-- CT-111 has no description and is unprivileged — stop and destroy
-- Fix: `pct stop 111 && pct destroy 111`
+- Both were "pulse" (Proxmox monitoring community script) and both were `onboot: 1`
+- CT-111 **destroyed** — CT-110 remains running as the sole pulse instance
+- ARP conflict eliminated
 
-### 5. qBittorrent CT-212 not responding — CRITICAL
-- HTTP probe to `http://192.168.12.212:8080` returns `000` (no connection)
-- CT is marked running in `pct list`
-- Fix: `pct exec 212 -- systemctl status qbittorrent` / `journalctl -u qbittorrent --no-pager -n 50`
+### 5. ~~qBittorrent CT-212 not responding~~ — RESOLVED 2026-05-20
+- CT-212 **destroyed** — config no longer exists on Tiamat
+- No data to migrate: Real-Debrid has replaced torrenting
+- Traefik route `qbittorrent.tiamat.local` is now stale (cleanup in Phase 3)
 
 ---
 
@@ -111,10 +109,10 @@ Data consolidation must happen before decommissioning either running instance.
 - `docs/NETWORKING.md` incorrectly lists `wg-easy` at `http://192.168.12.244:51821`
 - Decision: migrate to Bahamut as intended, or update docs to reflect laptop as the permanent home
 
-### 9. Dispatcharr CT-235 not responding
-- HTTP probe to `http://192.168.12.235:9191` returns `000`
-- CT is marked running
-- Fix: `pct exec 235 -- systemctl status dispatcharr` / check journal
+### 9. ~~Dispatcharr CT-235 not responding~~ — RESOLVED 2026-05-20
+- CT-235 **destroyed** — config no longer exists on Tiamat
+- No data to migrate
+- Traefik route `dispatcharr.tiamat.local` is now stale (cleanup in Phase 3)
 
 ### 10. Laptop IP .204, docs say .172
 - `ip addr show enp4s0` shows `192.168.12.204`
@@ -176,13 +174,17 @@ Data consolidation must happen before decommissioning either running instance.
 ## Remediation Sequence
 
 ```
-Phase 1 — Stop active damage (today)
-  1. Fix gluetun → stop IP leak
-  2. Stop CT-111 → resolve ARP conflict
-  3. Free primary NVMe → prune Docker images (30 GB), build cache (1.2 GB), clean ~/.cache
-  4. Free Ollama drive → remove llama3.2-vision:90b + llama3.3:70b (96 GB freed)
-  5. Fix qBittorrent CT-212 → restore download path
-  6. Fix Dispatcharr CT-235 → restore queue management
+Phase 1 — Stop active damage ✅ COMPLETED 2026-05-20
+  1. Fix gluetun → stop IP leak                              (pending — laptop task)
+  2. Stop CT-111 → resolve ARP conflict                      ✅ destroyed (was already gone)
+  3. Free primary NVMe → prune Docker images etc.            (pending — laptop task)
+  4. Free Ollama drive → remove large models                 (pending — laptop task)
+  5. qBittorrent CT-212 → destroyed (Real-Debrid replaced)   ✅
+  6. Dispatcharr CT-235 → destroyed                          ✅
+  CT-300 consolidation prep:
+  7. Rootfs expanded to 64 GB (LV was already resized; config label synced) ✅
+  8. RAM confirmed at 12 GB                                  ✅
+  Remaining Tiamat CTs: 102,103,104,105,106,107,110,200,234,248,279,300 (12 total)
 
 Phase 2 — Architectural decisions (this week)
   6. Choose authoritative *arr stack (laptop vs. Tiamat)
@@ -195,6 +197,7 @@ Phase 3 — Cleanup + docs (same week)
   9. Destroy CT-275, reclaim disk
   10. Update NETWORKING.md, AI.md with all corrections
   11. Commit + push all doc changes
+  12. Remove stale Traefik routes: qbittorrent.tiamat.local, dispatcharr.tiamat.local
 ```
 
 ---
@@ -216,7 +219,7 @@ Phase 3 — Cleanup + docs (same week)
 | Riven UI CT-300 | http://192.168.12.30:3000 | ✅ 307 |
 | Jellyfin CT-300 | http://192.168.12.30:8096 | ✅ 302 |
 | Homarr CT-300 | http://192.168.12.30:7575 | ✅ 307 |
-| qBittorrent CT-212 | http://192.168.12.212:8080 | ❌ no response |
-| Dispatcharr CT-235 | http://192.168.12.235:9191 | ❌ no response |
+| qBittorrent CT-212 | http://192.168.12.212:8080 | 🗑️ destroyed 2026-05-20 |
+| Dispatcharr CT-235 | http://192.168.12.235:9191 | 🗑️ destroyed 2026-05-20 |
 | Riven backend CT-300 | http://192.168.12.30:8080 | ⚠️ 404 |
 | AdGuard Bahamut | http://192.168.12.244:8081 | ✅ (port listening) |
