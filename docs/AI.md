@@ -65,9 +65,9 @@ remove them if not actively used to restore headroom.
 Use quantized variants for better performance.
 ## CT-300: n8n
 n8n v2.8.4 runs in CT-300 (`192.168.12.30:5678`) managed by PM2 (`/bin/sh /usr/local/bin/n8n-ct300-start`) under Node 20 via nvm.
-Data migrated from CT-102 on 2026-05-22. 5 workflows, 3 active, 2 inactive.
+Data migrated from CT-102 on 2026-05-22. 12 workflows total: 10 active, 2 inactive.
 
-### Active Webhooks
+### Active Webhooks (inbound HTTP triggers)
 
 | Workflow | ID | Endpoint | Input | Output |
 |---|---|---|---|---|
@@ -75,9 +75,37 @@ Data migrated from CT-102 on 2026-05-22. 5 workflows, 3 active, 2 inactive.
 | Smart Notification & Ingestion Alerts | `lCZpfV4kHSZ93k8x` | `POST /webhook/media-ingested` | `{title, event, poster?}` | `{ok, skipped?, message}` |
 | Automatic Jellyfin Library Refreshing | `WZzeAao5hFA0kDvp` | `POST /webhook/jellyfin-refresh` | `{libraryId?}` | `{ok, target}` |
 
+### Active Scheduled Workflows
+
+| Workflow | ID | Schedule | Purpose |
+|---|---|---|---|
+| CT-300 Service Health Watchdog | `PslDpAKknATuXbf5` | every 5 min | Probes Riven, Jellyfin, Redis, Postgres, disk |
+| CT-300 Rootfs Guard | `t3mQgmJJpvLUJtlH` | every 6h | Auto-prunes n8n history if disk >80% |
+| Riven Scrape Failure Handler | `2Ng23OenFFFzFhP3` | every 30 min | Retries Riven items stuck in Scraped state >4h |
+| Daily Library Digest | `KURLUOeJzCFAqIVL` | 9am daily | Summarises new Jellyfin items from last 24h |
+| Real-Debrid Torrent Expiry Alert | `5Td1SFcuQYAipZUI` | 10am daily | Alerts on RD torrents >25 days old |
+| Maintenance Cronjob Bundle | `E7ct5eDz9A2uR7EF` | 2am daily | Postgres VACUUM (daily), n8n log prune (Sunday), DB backup (1st of month) |
+| CrowdSec Weekly Threat Digest | `aLrn61vOMj7XQHdy` | Monday 8am | Summarises CrowdSec alerts from last week |
+
 ### Inactive Workflows
 - **Smart Watchlist Ingestion** (`8bluQniJoqSzn7Fc`) — kept disabled; requires Trakt token rotation.
-- **Automated Stuck Torrent Purging** (`0QX5pGmpR0UUynoU`) — schedule trigger, runs manually or on demand.
+- **Automated Stuck Torrent Purging** (`0QX5pGmpR0UUynoU`) — schedule trigger, runs on demand.
+
+### n8n-local-api Sidecar (systemd)
+n8n 2.8.4’s `executeCommand` node is not available in this build. System operations
+(health checks, disk pruning, Postgres VACUUM, CrowdSec queries) are exposed as a
+tiny local HTTP API instead:
+`systemctl status n8n-local-api` — listens on `http://127.0.0.1:9876/`
+
+| Endpoint | Action |
+|---|---|
+| `GET /health` | Probes Riven, Jellyfin, Redis, Postgres, disk % |
+| `GET /disk-guard` | Returns disk %, auto-prunes n8n history if >80% |
+| `GET /maintenance` | Daily VACUUM, Sunday log prune, monthly DB backup |
+| `GET /crowdsec` | `cscli alerts list` as JSON with scenario/IP tallies |
+
+Source: `/etc/n8n/scripts/n8n-local-api.py`
+Unit: `/etc/systemd/system/n8n-local-api.service`
 
 ### Architecture Notes (n8n 2.8.4 Task Runner)
 n8n 2.8.4 uses an internal JS task runner subprocess for Code nodes. This runner has a **restricted sandbox**:
@@ -133,6 +161,7 @@ n8n owner: `loufogle@gmail.com` (password in Opera GX password manager; update s
 ### Secrets / Environment Variables
 | Variable | Purpose | Set via |
 |---|---|---|
+| `RIVEN_API_KEY` | Riven backend API key (for health checks + failure handler) | `/etc/n8n/media-stack.env` + n8n Variables |
 | `JELLYFIN_API_KEY` | Jellyfin library refresh API token | `/etc/n8n/media-stack.env` + n8n Variables |
 | `REAL_DEBRID_API_TOKEN` | Real-Debrid API access | `/etc/n8n/media-stack.env` + n8n Variables |
 | `N8N_NOTIFICATION_WEBHOOK_URL` | Outbound notification URL (Discord/Gotify/generic) | n8n Variables (empty = notifications skipped) |
