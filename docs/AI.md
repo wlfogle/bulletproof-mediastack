@@ -63,12 +63,13 @@ remove them if not actively used to restore headroom.
 - `qwen2.5:7b`
 - `mistral:7b`
 Use quantized variants for better performance.
-## CT-102: n8n — Self-Healing Code Fixer
-n8n (v2.8.4) runs in CT-102 (`192.168.12.102:5678`) managed by PM2.
+## CT-300: n8n — Self-Healing Code Fixer
+n8n (v2.8.4) runs in CT-300 (`192.168.12.30:5678`) managed by PM2 under Node 20.
+Its data directory was synchronized from CT-102 on 2026-05-22 and contains 5 workflows, including the active Self-Healing Code Fixer.
 
 ### Workflow
 Active workflow: **Self-Healing Code Fixer** (ID: `7ViGS0znZtjIAtlE`)
-- Webhook endpoint: `http://192.168.12.102:5678/webhook/fix-code`
+- Webhook endpoint: `http://192.168.12.30:5678/webhook/fix-code`
 - Accepts POST with `{"code", "language", "error"}`, returns `{"fixedCode", "explanation"}`
 - Auto-activates on n8n startup
 
@@ -78,7 +79,7 @@ Extension: `your-publisher-name.self-healing-assistant` v0.1.0
 Settings (`~/.config/Code/User/settings.json`):
 ```json
 {
-    "selfHealing.n8nWebhookUrl": "http://192.168.12.102:5678/webhook/fix-code",
+    "selfHealing.n8nWebhookUrl": "http://192.168.12.30:5678/webhook/fix-code",
     "selfHealing.enableLogging": true,
     "selfHealing.requestTimeout": 120000
 }
@@ -94,15 +95,15 @@ App launcher entry at `~/.local/share/applications/n8n.desktop` opens the dashbo
 ### Management
 ```bash
 # Via Proxmox host
-ssh root@192.168.12.242 "pct exec 102 -- pm2 status"
-ssh root@192.168.12.242 "pct exec 102 -- pm2 restart n8n --update-env"
-ssh root@192.168.12.242 "pct exec 102 -- pm2 logs n8n --nostream --lines 20"
+ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 status"
+ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 restart n8n --update-env"
+ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 logs n8n --nostream --lines 20"
 ```
 
 ### Credentials
-n8n owner: `loufogle@gmail.com` (password in Opera GX password manager for `192.168.12.102:5678`)
+n8n owner: `loufogle@gmail.com` (password in Opera GX password manager; update saved URL to `192.168.12.30:5678`)
 
 ## Notes
 - If laptop IP changes, update `OLLAMA_HOST`.
 - Keep model cache on fast storage.
-- CT-102 was recreated 2026-05-19; its Ollama URL must match the current laptop IP.
+- CT-102 is no longer the active n8n endpoint. CT-300 is authoritative for n8n.

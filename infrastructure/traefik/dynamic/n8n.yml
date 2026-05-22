@@ -1,0 +1,12 @@
+http:
+  routers:
+    n8n:
+      rule: "Host(`n8n.tiamat.local`)"
+      entryPoints:
+        - web
+      service: n8n
+  services:
+    n8n:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.12.30:5678"

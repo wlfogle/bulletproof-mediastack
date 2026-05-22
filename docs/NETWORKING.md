@@ -46,7 +46,7 @@ iface vmbr0 inet static
 |---|---|---|
 | CT-100 `wireguard` | WireGuard server | `:51820/udp` |
 | CT-101 `wg-proxy` | WireGuard client + TinyProxy | `http://192.168.12.101:8888` |
-| CT-102 `n8n` | Workflow automation / AI bridge | `http://192.168.12.102:5678` |
+| CT-102 `n8n` | Legacy source container for n8n data | deprecated — active n8n is on CT-300 |
 | CT-103 `traefik` | Reverse proxy | `:80`, `:443`, `:8080` |
 | CT-104 `vaultwarden` | Password manager backend | `https://192.168.12.104` (Caddy TLS) |
 | CT-105 `valkey` | Redis-compatible cache | `:6379` |
@@ -74,7 +74,7 @@ iface vmbr0 inet static
 ### Riven mediastack
 | Service | URL | Notes |
 |---|---|---|
-| CT-300 `mediastack` | `http://192.168.12.30:3000` (Riven UI) / `:8080` (backend) / `:8096` (Jellyfin) | Privileged Debian 12 LXC — Riven + RivenVFS + Jellyfin + Postgres + Redis |
+| CT-300 `mediastack` | `http://192.168.12.30:3000` (Riven UI) / `:8080` (backend) / `:8096` (Jellyfin) / `:5678` (n8n) | Privileged Debian 12 LXC — Riven + RivenVFS + Jellyfin + n8n + Postgres + Redis |
 
 > This replaced the *arr+torrent stack for primary streaming. See `README.md` for architecture.
 
@@ -95,7 +95,7 @@ iface vmbr0 inet static
 |---|---|---|
 | CT-900 `ziggy` | Open WebUI + SearXNG (stopped/standby) | `http://192.168.12.250:3000` |
 
-> `n8n` is classified as infrastructure, not AI. CT-102 was recreated 2026-05-19; its Ollama URL must match the current laptop IP (see Laptop note above).
+> `n8n` is classified as infrastructure, not AI. The active n8n endpoint moved to CT-300 on 2026-05-22: `http://192.168.12.30:5678`.
 
 > CT-200 `alexa-media-bridge` is an LXC at `192.168.12.200`, not a VM.
 
@@ -151,7 +151,7 @@ Dynamic route files live in `infrastructure/traefik/dynamic/`.
 | `uptime.tiamat.local` | Uptime Kuma (CT-248) | `192.168.12.248:3001` |
 | `threadfin.tiamat.local` | Threadfin (CT-234) | `192.168.12.234:34400` |
 | ~~`dispatcharr.tiamat.local`~~ | ~~Dispatcharr (CT-235)~~ | ~~`192.168.12.235:9191`~~ — **destroyed** 2026-05-20 |
-| `n8n.tiamat.local` | n8n (CT-102) | `192.168.12.102:5678` |
+| `n8n.tiamat.local` | n8n (CT-300) | `192.168.12.30:5678` |
 
 \* CT-242 has static IP 192.168.12.151. CT-240 is DHCP — set a static reservation on the router.
 CT-242 runs Seerr natively (no Docker). Proxmox vmbr0 has static ARP for Radarr: `ip neigh replace 192.168.12.225 dev vmbr0 lladdr BC:24:11:2A:83:BB nud permanent`

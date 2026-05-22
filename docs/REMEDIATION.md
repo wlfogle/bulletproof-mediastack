@@ -211,7 +211,7 @@ Phase 3 — Cleanup + docs (same week)
 | Sonarr CT-214 | http://192.168.12.214:8989 | ✅ 302 |
 | Radarr CT-215 | http://192.168.12.225:7878 | ✅ 302 |
 | Prowlarr CT-210 | http://192.168.12.210:9696 | ✅ 302 |
-| n8n CT-102 | http://192.168.12.102:5678 | ✅ 200 |
+| n8n CT-300 | http://192.168.12.30:5678 | ✅ 200 — synchronized from CT-102 on 2026-05-22 |
 | Traefik CT-103 | http://192.168.12.103:8080 | ✅ 301 |
 | Authentik CT-107 | http://192.168.12.107:9000 | ✅ 302 |
 | Uptime Kuma CT-248 | http://192.168.12.248:3001 | ✅ 302 |
