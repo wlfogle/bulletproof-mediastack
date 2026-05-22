@@ -176,27 +176,66 @@ Data consolidation must happen before decommissioning either running instance.
 ```
 Phase 1 — Stop active damage ✅ COMPLETED 2026-05-20
   1. Fix gluetun → stop IP leak                              (pending — laptop task)
-  2. Stop CT-111 → resolve ARP conflict                      ✅ destroyed (was already gone)
+  2. Stop CT-111 → resolve ARP conflict                      ✅ destroyed
   3. Free primary NVMe → prune Docker images etc.            (pending — laptop task)
   4. Free Ollama drive → remove large models                 (pending — laptop task)
   5. qBittorrent CT-212 → destroyed (Real-Debrid replaced)   ✅
   6. Dispatcharr CT-235 → destroyed                          ✅
   CT-300 consolidation prep:
-  7. Rootfs expanded to 64 GB (LV was already resized; config label synced) ✅
+  7. Rootfs expanded to 64 GB                                ✅
   8. RAM confirmed at 12 GB                                  ✅
-  Remaining Tiamat CTs: 102,103,104,105,106,107,110,200,234,248,279,300 (12 total)
 
-Phase 2 — Architectural decisions (this week)
-  6. Choose authoritative *arr stack (laptop vs. Tiamat)
-     → stop duplicates, back up DB from losing side
-  7. Consolidate Vaultwarden to Bahamut
-     → export from running instance, deploy on Bahamut, stop CT-104 + laptop container
-  8. Decide wg-easy location → update docs or migrate
+Phase 2 — n8n + workflow migration ✅ COMPLETED 2026-05-22
+  - n8n migrated CT-102 → CT-300, workflows fixed, webhooks active
+  - 7 automation workflows added (Health Watchdog, Rootfs Guard, Riven Failure Handler,
+    Library Digest, RD Expiry Alert, Maintenance Bundle, CrowdSec Digest)
+  - n8n-local-api sidecar (127.0.0.1:9876) for system operations
 
-Phase 3 — Cleanup + docs (same week)
-  9. Destroy CT-275, reclaim disk
-  10. Update NETWORKING.md, AI.md with all corrections
-  11. Commit + push all doc changes
+Phase 3 — Traefik → Caddy ✅ COMPLETED 2026-05-22
+  - All *.tiamat.local routes migrated to CT-300 Caddy
+  - AdGuard wildcard *.tiamat.local → 192.168.12.30 added
+  - CT-103 (Traefik) destroyed
+  - Caddyfile live in infrastructure/caddy/Caddyfile
+
+Phase 4 — CT consolidation ✅ COMPLETED 2026-05-22
+  Destroyed: CT-102, CT-103, CT-104, CT-105, CT-106, CT-107,
+             CT-110, CT-200, CT-234, CT-248, CT-279
+  Migrated into CT-300:
+    - Threadfin   → /opt/threadfin, port 34400
+    - Uptime Kuma → /opt/uptime-kuma, port 3001
+    - Tailscale   → node tiamat-tailscale, 100.115.82.71 (subnet routing disabled)
+    - Pulse       → /opt/pulse, port 7655/9091, Ollama URL fixed to laptop
+  Vaultwarden backup: /var/backup/mediastack/ in CT-300
+  HA DuckDNS proxy moved to Bahamut Caddy
+
+Phase 5 — Docs finalization ✅ COMPLETED 2026-05-22
+  - NETWORKING.md fully rewritten for final architecture
+  - AI.md updated with all 10 active n8n workflows
+  - infrastructure/caddy/Caddyfile added to repo
+
+Verification (2026-05-22 — all from laptop)
+  ✅ ping 192.168.12.30 — 0% loss
+  ✅ Riven UI     :3000  HTTP 307
+  ✅ Riven backend:8080  HTTP 401 (auth required)
+  ✅ Jellyfin     :8096  HTTP 200
+  ✅ n8n          :5678  HTTP 200
+  ✅ Threadfin    :34400 HTTP 200
+  ✅ Uptime Kuma  :3001  HTTP 426 (WebSocket / normal)
+  ✅ Homarr       :7575  HTTP 307
+  ✅ Pulse        :7655  HTTP 200
+  ✅ Caddy HTTPS  n8n.tiamat.local         200
+  ✅ Caddy HTTPS  uptime.tiamat.local      426
+  ✅ Caddy HTTPS  jellyfin.mediastack.lan  302
+  ✅ Caddy HTTPS  riven.mediastack.lan     307
+  ✅ Tailscale    tiamat-tailscale 100.115.82.71 connected
+  ✅ DNS          *.tiamat.local → 192.168.12.30 via AdGuard
+  ✅ n8n webhooks fix-code, jellyfin-refresh, media-ingested active
+
+Still pending (laptop tasks)
+  - Fix gluetun VPN or remove (Real-Debrid makes torrenting obsolete)
+  - Stop laptop Docker duplicates (Sonarr, Radarr, Prowlarr containers)
+  - Free laptop primary NVMe (94% full — prune Docker/Steam)
+  - Free Ollama model drive (89% — remove unused 90b/70b models)
   12. Remove stale Traefik routes: qbittorrent.tiamat.local, dispatcharr.tiamat.local
 ```
 
