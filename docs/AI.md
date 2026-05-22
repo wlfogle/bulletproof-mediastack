@@ -63,15 +63,40 @@ remove them if not actively used to restore headroom.
 - `qwen2.5:7b`
 - `mistral:7b`
 Use quantized variants for better performance.
-## CT-300: n8n — Self-Healing Code Fixer
-n8n (v2.8.4) runs in CT-300 (`192.168.12.30:5678`) managed by PM2 under Node 20.
-Its data directory was synchronized from CT-102 on 2026-05-22 and contains 5 workflows, including the active Self-Healing Code Fixer.
+## CT-300: n8n
+n8n v2.8.4 runs in CT-300 (`192.168.12.30:5678`) managed by PM2 (`/bin/sh /usr/local/bin/n8n-ct300-start`) under Node 20 via nvm.
+Data migrated from CT-102 on 2026-05-22. 5 workflows, 3 active, 2 inactive.
 
-### Workflow
-Active workflow: **Self-Healing Code Fixer** (ID: `7ViGS0znZtjIAtlE`)
-- Webhook endpoint: `http://192.168.12.30:5678/webhook/fix-code`
-- Accepts POST with `{"code", "language", "error"}`, returns `{"fixedCode", "explanation"}`
-- Auto-activates on n8n startup
+### Active Webhooks
+
+| Workflow | ID | Endpoint | Input | Output |
+|---|---|---|---|---|
+| Self-Healing Code Fixer | `7ViGS0znZtjIAtlE` | `POST /webhook/fix-code` | `{code, language, error}` | `{fixedCode, explanation}` |
+| Smart Notification & Ingestion Alerts | `lCZpfV4kHSZ93k8x` | `POST /webhook/media-ingested` | `{title, event, poster?}` | `{ok, skipped?, message}` |
+| Automatic Jellyfin Library Refreshing | `WZzeAao5hFA0kDvp` | `POST /webhook/jellyfin-refresh` | `{libraryId?}` | `{ok, target}` |
+
+### Inactive Workflows
+- **Smart Watchlist Ingestion** (`8bluQniJoqSzn7Fc`) — kept disabled; requires Trakt token rotation.
+- **Automated Stuck Torrent Purging** (`0QX5pGmpR0UUynoU`) — schedule trigger, runs manually or on demand.
+
+### Architecture Notes (n8n 2.8.4 Task Runner)
+n8n 2.8.4 uses an internal JS task runner subprocess for Code nodes. This runner has a **restricted sandbox**:
+- `fetch()` — not available (use HTTP Request nodes for HTTP calls)
+- `$helpers` — not available in task runner context
+- `$env.*` — blocked by default ("access to env vars denied")
+- `$vars.*` — **available** (n8n Variables table, use this for secrets)
+- `process.env.*` — not available in task runner
+
+All secrets (Jellyfin API key, Real-Debrid token, notification URL, Trakt ID, TMDB key) are stored in the
+n8n **Variables** table (viewable at `http://192.168.12.30:5678/variables`) and referenced as `$vars.KEY_NAME`
+in workflow nodes. They are also mirrored in `/etc/n8n/media-stack.env` for process-level access.
+
+### Workflow Activation Fix (2026-05-22)
+The Jellyfin and Notification workflows failed to activate on CT-102→CT-300 migration because their
+`workflow_history` entries had empty (`[]`) nodes, while n8n 2.8.4 activates workflows from history
+(keyed by `workflow_entity.activeVersionId`), not directly from `workflow_entity.nodes`.
+Fix: populated `workflow_history.nodes` from `workflow_entity.nodes` for both workflows,
+then restarted n8n.
 
 ### VS Code Extension
 Extension: `your-publisher-name.self-healing-assistant` v0.1.0
@@ -95,13 +120,25 @@ App launcher entry at `~/.local/share/applications/n8n.desktop` opens the dashbo
 ### Management
 ```bash
 # Via Proxmox host
-ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 status"
-ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 restart n8n --update-env"
-ssh root@192.168.12.242 "pct exec 300 -- /root/.nvm/versions/node/v20.20.2/bin/pm2 logs n8n --nostream --lines 20"
+ssh root@192.168.12.242 "pct exec 300 -- bash -c 'source /root/.nvm/nvm.sh && pm2 status'"
+ssh root@192.168.12.242 "pct exec 300 -- bash -c 'source /root/.nvm/nvm.sh && pm2 restart n8n'"
+ssh root@192.168.12.242 "pct exec 300 -- bash -c 'source /root/.nvm/nvm.sh && pm2 logs n8n --nostream --lines 30'"
+# Check registered webhooks:
+ssh root@192.168.12.242 "pct exec 300 -- sqlite3 /root/.n8n/database.sqlite 'SELECT webhookPath, method FROM webhook_entity'"
 ```
 
 ### Credentials
 n8n owner: `loufogle@gmail.com` (password in Opera GX password manager; update saved URL to `192.168.12.30:5678`)
+
+### Secrets / Environment Variables
+| Variable | Purpose | Set via |
+|---|---|---|
+| `JELLYFIN_API_KEY` | Jellyfin library refresh API token | `/etc/n8n/media-stack.env` + n8n Variables |
+| `REAL_DEBRID_API_TOKEN` | Real-Debrid API access | `/etc/n8n/media-stack.env` + n8n Variables |
+| `N8N_NOTIFICATION_WEBHOOK_URL` | Outbound notification URL (Discord/Gotify/generic) | n8n Variables (empty = notifications skipped) |
+| `N8N_NOTIFICATION_KIND` | Payload format: `discord`, `gotify`, `telegram`, `generic` | n8n Variables (default: `generic`) |
+| `TRAKT_CLIENT_ID` | Trakt API client ID for watchlist | `/etc/n8n/media-stack.env` + n8n Variables |
+| `TMDB_API_KEY` | TMDB metadata | `/etc/n8n/media-stack.env` + n8n Variables (empty) |
 
 ## Notes
 - If laptop IP changes, update `OLLAMA_HOST`.
