@@ -36,68 +36,39 @@ iface vmbr0 inet static
 
 ## Core Service Map
 
+> **Consolidated 2026-05-22**: All Proxmox LXC services merged into CT-300. Only CT-300 remains.
+
 ### Proxmox host
 | Service | URL |
 |---|---|
 | Proxmox UI | `https://192.168.12.242:8006` |
 
-### Infrastructure CTs
-| CT | Purpose | URL / Port |
+### CT-300 `mediastack` — the only running LXC (192.168.12.30)
+All services run inside this single privileged Debian 12 LXC.
+
+| Service | Internal port | URL / hostname |
 |---|---|---|
-| CT-100 `wireguard` | WireGuard server | `:51820/udp` |
-| CT-101 `wg-proxy` | WireGuard client + TinyProxy | `http://192.168.12.101:8888` |
-| CT-102 `n8n` | Legacy source container for n8n data | deprecated — active n8n is on CT-300 |
-| CT-103 `traefik` | Reverse proxy | `:80`, `:443`, `:8080` |
-| CT-104 `vaultwarden` | Password manager backend | `https://192.168.12.104` (Caddy TLS) |
-| CT-105 `valkey` | Redis-compatible cache | `:6379` |
-| CT-106 `postgresql` | Database | `:5432` |
-| CT-107 `authentik` | SSO | `http://192.168.12.107:9000` |
-| CT-108 `flaresolverr` | Cloudflare bypass | `http://192.168.12.108:8191` |
-| CT-109 `byparr` | FlareSolverr alternative (stopped/standby) | `http://192.168.12.109:8191` |
-| CT-112 `byparr` | FlareSolverr alternative (active) | `http://192.168.12.109:8191` |
+| Riven frontend | 3000 | `http://192.168.12.30:3000` / `riven.mediastack.lan` |
+| Riven backend | 8080 | `http://192.168.12.30:8080` |
+| Jellyfin | 8096 | `http://192.168.12.30:8096` / `jellyfin.mediastack.lan` / `jellyfin.tiamat.local` |
+| n8n | 5678 | `http://192.168.12.30:5678` / `n8n.tiamat.local` |
+| Threadfin (IPTV proxy) | 34400 | `http://192.168.12.30:34400/web` / `threadfin.tiamat.local` |
+| Uptime Kuma | 3001 | `http://192.168.12.30:3001` / `uptime.tiamat.local` |
+| Pulse (Proxmox monitor) | — | web UI port in `/etc/pulse/.env` |
+| Caddy (reverse proxy) | 80/443 | handles all `*.tiamat.local` + `*.mediastack.lan` routes |
+| PostgreSQL 15 | 5432 | internal only (`riven` database) |
+| Redis | 6379 | internal only |
+| CrowdSec | 8081 | internal only |
+| Tailscale | — | node `tiamat-tailscale` · `100.115.82.71` · funnel `https://tiamat-tailscale.tail9d8b73.ts.net` |
 
-### Download stack
-| Service | URL | Status |
-|---|---|---|
-| Prowlarr (CT-210) | `http://192.168.12.210:9696` | running |
-| Jackett (CT-211) | `http://192.168.12.211:9117` — fallback indexer (hdd-ct) | stopped |
-| ~~qBittorrent (CT-212)~~ | ~~`http://192.168.12.212:8080`~~ | **destroyed** 2026-05-20 — Real-Debrid replaced torrenting |
-| rdtclient (CT-213) | `http://192.168.12.213` — Real-Debrid client (replaces Deluge-fallback) | running |
-| Sonarr (CT-214) | `http://192.168.12.214:8989` | running |
-| Radarr (CT-215) | `http://192.168.12.225:7878` | running |
-| Decluttarr (CT-216) | `http://192.168.12.216` — queue cleaner for *arr | running |
-| Readarr (CT-217) | `http://192.168.12.217:8787` | stopped |
-| Recyclarr (CT-245) | `http://192.168.12.245` — quality profile sync | running |
+**Decommissioned CTs (2026-05-22):** CT-102 (n8n-stable), CT-103 (Traefik), CT-104 (Vaultwarden), CT-105 (Valkey), CT-106 (Postgres), CT-107 (Authentik), CT-110 (Pulse), CT-200 (HA DuckDNS proxy), CT-234 (Threadfin), CT-248 (Uptime Kuma), CT-279 (Tailscale)
+Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwarden_data.tgz` in CT-300.
 
-> CT-219 (Whisparr), CT-220 (Sonarr Extended), CT-223 (Autobrr), CT-224 (Deluge) — decommissioned.
-
-### Riven mediastack
-| Service | URL | Notes |
-|---|---|---|
-| CT-300 `mediastack` | `http://192.168.12.30:3000` (Riven UI) / `:8080` (backend) / `:8096` (Jellyfin) / `:5678` (n8n) | Privileged Debian 12 LXC — Riven + RivenVFS + Jellyfin + n8n + Postgres + Redis |
-
-> This replaced the *arr+torrent stack for primary streaming. See `README.md` for architecture.
-
-### Media servers
-| Service | URL | Status |
-|---|---|---|
-| Plex (CT-230) | `http://192.168.12.230:32400/web` | stopped |
-| Jellyfin (CT-231) | `http://192.168.12.231:8096` | running |
-
-### VMs
+### VMs (unchanged)
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
-| VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough, sdb disk passthrough |
-| VM-990 `haos17-1` | Home Assistant OS | DHCP (`.250` static reservation) | Smart home hub — was VM-500 |
-
-### AI / auxiliary CTs
-| CT | Purpose | URL |
-|---|---|---|
-| CT-900 `ziggy` | Open WebUI + SearXNG (stopped/standby) | `http://192.168.12.250:3000` |
-
-> `n8n` is classified as infrastructure, not AI. The active n8n endpoint moved to CT-300 on 2026-05-22: `http://192.168.12.30:5678`.
-
-> CT-200 `alexa-media-bridge` is an LXC at `192.168.12.200`, not a VM.
+| VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough |
+| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.250` | Smart home hub |
 
 ### Laptop NFS Exports (192.168.12.172)
 | Export path | Tiamat mount | Consumer |
@@ -127,49 +98,48 @@ qBittorrent/Prowlarr -> 192.168.12.101:8888 (TinyProxy)
 
 If WG tunnel drops, proxy path breaks and downloads fail closed.
 
-## Traefik Reverse Proxy Routes (CT-103)
-All services are accessible via `*.tiamat.local` through Traefik at `192.168.12.103`.
-Dynamic route files live in `infrastructure/traefik/dynamic/`.
+## Caddy Reverse Proxy (CT-300)
+All `*.tiamat.local` and `*.mediastack.lan` hostnames are served by Caddy **inside CT-300** at `192.168.12.30:80/443`.
+DNS wildcard: `*.tiamat.local → 192.168.12.30` via AdGuard rewrite on Bahamut.
+Config: `infrastructure/caddy/Caddyfile` (also live at `/etc/caddy/Caddyfile` in CT-300).
 
 | Hostname | Service | Backend |
 |---|---|---|
-| `traefik.tiamat.local` | Traefik dashboard | `192.168.12.103:8080` |
-| `jellyfin.tiamat.local` | Jellyfin (CT-231) | `192.168.12.231:8096` |
-| `plex.tiamat.local` | Plex (CT-230) | `192.168.12.230:32400` |
-| `sonarr.tiamat.local` | Sonarr (CT-214) | `192.168.12.214:8989` |
-| `radarr.tiamat.local` | Radarr (CT-215) | `192.168.12.225:7878` |
-| `prowlarr.tiamat.local` | Prowlarr (CT-210) | `192.168.12.210:9696` |
-| ~~`qbittorrent.tiamat.local`~~ | ~~qBittorrent (CT-212)~~ | ~~`192.168.12.212:8080`~~ — **destroyed** 2026-05-20 |
-| `jackett.tiamat.local` | Jackett (CT-211) | `192.168.12.211:9117` |
-| `deluge.tiamat.local` | Deluge fallback (CT-213) | `192.168.12.213:8112` |
-| `bazarr.tiamat.local` | Bazarr (CT-240) | `192.168.12.188:6767` \* |
-| `jellyseerr.tiamat.local` | Seerr/Jellyseerr (CT-242) | `192.168.12.151:5055` \* |
-| `vault.tiamat.local` | Vaultwarden (CT-104) | `https://192.168.12.104:443` (via serversTransport skip-verify) |
-| `vaultwarden.tiamat.local` | Vaultwarden (CT-104) | `https://192.168.12.104:443` (alias) |
-| `auth.tiamat.local` | Authentik (CT-107) | `192.168.12.107:9000` |
-| `jellystat.tiamat.local` | Jellystat (CT-247) | `192.168.12.247:3000` |
-| `uptime.tiamat.local` | Uptime Kuma (CT-248) | `192.168.12.248:3001` |
-| `threadfin.tiamat.local` | Threadfin (CT-234) | `192.168.12.234:34400` |
-| ~~`dispatcharr.tiamat.local`~~ | ~~Dispatcharr (CT-235)~~ | ~~`192.168.12.235:9191`~~ — **destroyed** 2026-05-20 |
-| `n8n.tiamat.local` | n8n (CT-300) | `192.168.12.30:5678` |
+| `riven.mediastack.lan`, `riven.local` | Riven UI | `127.0.0.1:3000` |
+| `jellyfin.mediastack.lan`, `jellyfin.local` | Jellyfin | `127.0.0.1:8096` |
+| `n8n.tiamat.local` | n8n | `127.0.0.1:5678` |
+| `uptime.tiamat.local`, `uptimekuma.tiamat.local` | Uptime Kuma | `127.0.0.1:3001` |
+| `threadfin.tiamat.local` | Threadfin | `192.168.12.30:34400` |
+| `ha.tiamat.local`, `homeassistant.tiamat.local` | Home Assistant VM-990 | `192.168.12.250:8123` |
+| `sonarr.tiamat.local` | Sonarr (stopped CT-214) | `192.168.12.214:8989` |
+| `radarr.tiamat.local` | Radarr (stopped CT-215) | `192.168.12.225:7878` |
+| `prowlarr.tiamat.local` | Prowlarr (stopped CT-210) | `192.168.12.210:9696` |
+| `homarr.mediastack.lan`, `homarr.local` | Homarr dashboard | `127.0.0.1:7575` |
+| `guide.mediastack.lan`, `guide.local` | Guide / Meilisearch | `127.0.0.1:7700` |
+| `cockpit.mediastack.lan` | Cockpit | `127.0.0.1:9090` |
 
-\* CT-242 has static IP 192.168.12.151. CT-240 is DHCP — set a static reservation on the router.
-CT-242 runs Seerr natively (no Docker). Proxmox vmbr0 has static ARP for Radarr: `ip neigh replace 192.168.12.225 dev vmbr0 lladdr BC:24:11:2A:83:BB nud permanent`
-then update `infrastructure/traefik/dynamic/media-management.yml` if IPs change.
+To add a route, append a block to `/etc/caddy/Caddyfile` in CT-300 and `systemctl reload caddy`.
+Also sync to `infrastructure/caddy/Caddyfile` in this repo.
 
-To add a new route, drop a YAML file in `/etc/traefik/dynamic/` on CT-103.
-Traefik hot-reloads it immediately (no restart needed).
+**CT-103 Traefik decommissioned 2026-05-22.** Old Traefik configs preserved in `infrastructure/traefik/dynamic/` for reference.
 
 ## DNS / Remote Access on Bahamut
 
 Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi) runs:
-- AdGuard Home (primary DNS): `:53`, admin UI `:8081`
-- wg-easy (remote VPN mgmt): `http://192.168.12.244:51821`
+- AdGuard Home (primary DNS, Docker): `:53`, admin UI `:3000` (external `:8081`)
+  - Rewrite: `*.tiamat.local → 192.168.12.30` (CT-300)
+- wg-easy (WireGuard remote VPN): `http://192.168.12.244:51821`
 - WireGuard tunnel endpoint: `:51820/udp`
-- Vaultwarden behind Caddy: `https://192.168.12.244` (TLS via DuckDNS)
+- Vaultwarden (native): `https://192.168.12.244` (TLS via DuckDNS caddy)
+- Caddy (Docker): handles `*.lou-fogle-media-stack.duckdns.org` TLS
+  - `vaultwarden.*` → `localhost:8080`
+  - `ha.*` → `192.168.12.250:8123` (Home Assistant VM-990)
+  - `wg.*` → `localhost:51821`
+  - `adguard.*` → `localhost:8081`
 - DietPi Dashboard: `:5252`
 - TigerVNC: `:5901`
-- Tailscale (mesh VPN)
+
+> **Tailscale removed from Bahamut (2026-05-22).** Tailscale now runs inside CT-300 as `tiamat-tailscale` (100.115.82.71).
 
 Router DNS recommendation:
 1. `192.168.12.244`
