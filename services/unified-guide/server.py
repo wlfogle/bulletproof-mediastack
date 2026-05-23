@@ -133,11 +133,11 @@ def slugify(s: str) -> str:
 # data model
 # ──────────────────────────────────────────────────────────────────────────────
 def riven_request_url(title: str) -> str:
-    """Deep-link to Riven's request UI for the given title."""
+    """Deep-link to Riven's explore/search page for the given title."""
     base = CFG.get("RIVEN_PUBLIC", "").rstrip("/")
     if not base or not title:
         return ""
-    return f"{base}/?q={urllib.parse.quote(title)}"
+    return f"{base}/explore?query={urllib.parse.quote(title)}"
 
 
 def make_record(*, source: str, channel_id: str, channel_name: str,
@@ -196,12 +196,12 @@ def jellyfin_channels() -> Tuple[str, Dict[str, str]]:
 
 def jellyfin_launch_for_channel(server_id: str, channel_id: str) -> str:
     return (f"{CFG['JELLYFIN_PUBLIC']}/web/index.html"
-            f"#!/livetv.html?serverId={server_id}&channelId={channel_id}")
+            f"#/details?id={channel_id}&context=livetv&serverId={server_id}")
 
 
 def jellyfin_launch_for_item(server_id: str, item_id: str) -> str:
     return (f"{CFG['JELLYFIN_PUBLIC']}/web/index.html"
-            f"#!/details?serverId={server_id}&id={item_id}")
+            f"#/details?id={item_id}&serverId={server_id}")
 
 
 def from_jellyfin_library(server_id: str) -> List[Dict[str, Any]]:
@@ -302,7 +302,7 @@ def xmltv_to_records(path: str, source: str, server_id: str,
             if jf_id and server_id:
                 launch = jellyfin_launch_for_channel(server_id, jf_id)
             else:
-                launch = f"{CFG['JELLYFIN_PUBLIC']}/web/index.html#!/livetv.html"
+                launch = f"{CFG['JELLYFIN_PUBLIC']}/web/index.html#/livetv?tab=1&serverId={server_id}"
         out.append(make_record(
             source=source,
             channel_id=cid,
