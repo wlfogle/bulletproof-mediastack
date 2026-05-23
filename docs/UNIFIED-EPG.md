@@ -110,15 +110,21 @@ The eviction path is **hardlink-aware**: it only deletes files in `/mnt/hdd/torr
 | `/data/streaming/yttv/yttv-channels.json` | name → videoId map (used for launch URLs) |
 | `/var/lib/disk-watchdog/status.json` | watchdog state (poll-able by Pulse / Uptime Kuma) |
 | `/var/lib/disk-watchdog/notifications.log` | rolling notifications |
+## Notes
+- All services (Jellyfin, HDHomeRun, IPTV via tvpass.org) run natively in CT-300. `UG_JELLYFIN_URL` and `UG_THREADFIN_URL` must use the **LAN IP** (`192.168.12.30`), not `127.0.0.1` — those services bind to the external interface, not loopback.
+- IPTV EPG is sourced directly from `https://tvpass.org/epg.xml` via `UG_THREADFIN_XMLTV`. The refresher downloads and caches it to `/var/cache/unified-guide/threadfin.xml` each run. There is no Threadfin proxy in the path.
+- Jellyfin API token lives in `/etc/jellyfin-autoscan.env` as `JELLYFIN_API_KEY`. The install script reads this field; re-run the script if the token ever rotates.
 ## Troubleshooting
 | Symptom | Diagnosis | Fix |
-|---|---|---|
-| Grid loads but lanes are empty | `state.json` not yet written | `pct exec 300 -- systemctl start unified-guide-refresh.service` |
-| SVOD lanes empty | TMDB key missing | `pct exec 300 -- grep UG_TMDB_API_KEY /etc/unified-guide/env`; populate, then restart `unified-guide.service` |
-| Library lane empty | Jellyfin token missing or wrong | check `/etc/unified-guide/env` `UG_JELLYFIN_TOKEN`; verify with `curl -H "X-Emby-Token: $TOK" http://127.0.0.1:8096/Users` inside CT-300 |
-| YT TV lanes empty | `browse.json` missing/stale | re-stage per cookie procedure above |
-| Click on OTA cell falls back to generic Live TV URL | XMLTV channel name doesn't match Jellyfin Live TV channel name | rename either side; aggregator matches `lower().strip()` |
-| Caddy says cert error | Internal CA not trusted on client | add `192.168.12.30 guide.mediastack.lan` to `/etc/hosts` and accept the Caddy internal cert (one-time per device) |
-| Watchdog paused downloads but didn't resume | `/mnt/hdd` still above `HDD_RESUME` | check `df /mnt/hdd`; lower threshold or free space; flag at `/var/lib/disk-watchdog/downloads.paused` |
-| `disk-space-watchdog` doesn't restart riven-jd2-bridge | service not present on host | `systemctl list-units 'riven*'` — bridge must be installed via `scripts/install-jd2-pipeline.sh` |
-| `myjdapi not installed` in watchdog log | python myjdapi missing on host | `pip install --break-system-packages myjdapi` or install the bridge first (which installs it) |
+||---|---|---|
+|| Grid loads but lanes are empty | `state.json` not yet written | `pct exec 300 -- systemctl start unified-guide-refresh.service` |
+|| SVOD lanes empty | TMDB key missing | `pct exec 300 -- grep UG_TMDB_API_KEY /etc/unified-guide/env`; populate, then restart `unified-guide.service` |
+|| Library lane empty | Jellyfin token missing or wrong | check `UG_JELLYFIN_TOKEN` in `/etc/unified-guide/env`; must match `JELLYFIN_API_KEY` in `/etc/jellyfin-autoscan.env` |
+|| IPTV lanes empty | `UG_THREADFIN_XMLTV` not set or tvpass.org unreachable | verify `/etc/unified-guide/env` has `UG_THREADFIN_XMLTV=https://tvpass.org/epg.xml`; check `journalctl -u unified-guide-refresh.service` for download errors |
+|| YT TV lanes empty | `browse.json` missing/stale | re-stage per cookie procedure above |
+|| Jellyfin/IPTV lanes empty, `Connection refused` in logs | Services bound to LAN IP, not loopback | ensure `UG_JELLYFIN_URL=http://192.168.12.30:8096` and `UG_THREADFIN_URL=http://192.168.12.30:34400` in env |
+|| Click on OTA cell falls back to generic Live TV URL | XMLTV channel name doesn't match Jellyfin Live TV channel name | rename either side; aggregator matches `lower().strip()` |
+|| Caddy says cert error | Internal CA not trusted on client | add `192.168.12.30 guide.mediastack.lan` to `/etc/hosts` and accept the Caddy internal cert (one-time per device) |
+|| Watchdog paused downloads but didn't resume | `/mnt/hdd` still above `HDD_RESUME` | check `df /mnt/hdd`; lower threshold or free space; flag at `/var/lib/disk-watchdog/downloads.paused` |
+|| `disk-space-watchdog` doesn't restart riven-jd2-bridge | service not present on host | `systemctl list-units 'riven*'` — bridge must be installed via `scripts/install-jd2-pipeline.sh` |
+|| `myjdapi not installed` in watchdog log | python myjdapi missing on host | `pip install --break-system-packages myjdapi` or install the bridge first (which installs it) |

@@ -426,7 +426,7 @@ def write_unified_xmltv(records: List[Dict[str, Any]], out_path: str) -> None:
         if r.get("desc"):
             ET.SubElement(p, "desc").text = r["desc"]
     tree = ET.ElementTree(tv)
-    tmp = out_path + ".tmp"
+    tmp = out_path + f".{os.getpid()}.tmp"
     tree.write(tmp, encoding="utf-8", xml_declaration=True)
     os.replace(tmp, out_path)
     log.info("wrote %s (%d channels, %d programmes)",
@@ -453,6 +453,19 @@ def refresh() -> Dict[str, Any]:
 
     # IPTV via Threadfin XMLTV (if configured)
     th_xml = CFG["THREADFIN_XMLTV"]
+    # If the override is a remote URL, download it to a local cache first
+    if th_xml and th_xml.startswith(("http://", "https://")):
+        try:
+            data = http_get(th_xml, timeout=20)
+            cache = "/var/cache/unified-guide/threadfin.xml"
+            Path(cache).parent.mkdir(parents=True, exist_ok=True)
+            with open(cache, "wb") as f:
+                f.write(data)
+            th_xml = cache
+            log.info("threadfin xmltv (URL override) cached to %s", cache)
+        except Exception as e:
+            log.info("threadfin xmltv (URL override) unavailable (%s); skipping", e)
+            th_xml = ""
     if not th_xml and CFG["THREADFIN_URL"]:
         # Threadfin default xmltv path: /xmltv/threadfin.xml
         th_xml = CFG["THREADFIN_URL"].rstrip("/") + "/xmltv/threadfin.xml"
@@ -530,7 +543,7 @@ def refresh() -> Dict[str, Any]:
         "records": records,
     }
     Path(CFG["STATE_FILE"]).parent.mkdir(parents=True, exist_ok=True)
-    tmp = CFG["STATE_FILE"] + ".tmp"
+    tmp = CFG["STATE_FILE"] + f".{os.getpid()}.tmp"
     with open(tmp, "w") as f:
         json.dump(state, f, separators=(",", ":"))
     os.replace(tmp, CFG["STATE_FILE"])

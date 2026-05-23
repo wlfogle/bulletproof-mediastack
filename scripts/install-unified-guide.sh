@@ -106,7 +106,15 @@ INNER
 discover_jellyfin_token() {
   # CREDENTIALS.md says /etc/jellyfin-autoscan.env (mode 0600) holds the key
   local tok=""
-  tok=$(ssh_ct_quiet "awk -F= '/^(JELLYFIN_)?API_KEY=/{sub(/^[\"\047]/,\"\",\$2); sub(/[\"\047]\r?\$/,\"\",\$2); print \$2}' /etc/jellyfin-autoscan.env | tail -1" | tr -d '[:space:]')
+  # Try JELLYFIN_API_KEY first (autoscan format), then generic API_KEY
+  tok=$(ssh_ct_quiet "awk -F= '/^JELLYFIN_API_KEY=/{sub(/^[\"\047]/,\"\",\$2); sub(/[\"\047]\r?\$/,\"\",\$2); print \$2; exit}' /etc/jellyfin-autoscan.env" | tr -d '[:space:]')
+  if [ -z "$tok" ]; then
+    tok=$(ssh_ct_quiet "awk -F= '/^(JELLYFIN_)?API_KEY=/{sub(/^[\"\047]/,\"\",\$2); sub(/[\"\047]\r?\$/,\"\",\$2); print \$2; exit}' /etc/jellyfin-autoscan.env" | tr -d '[:space:]')
+  fi
+  # Fall back to jellyfin.db
+  if [ -z "$tok" ]; then
+    tok=$(ssh_ct_quiet "sqlite3 /var/lib/jellyfin/data/jellyfin.db 'SELECT AccessToken FROM ApiKeys LIMIT 1;' 2>/dev/null" | tr -d '[:space:]')
+  fi
   printf '%s' "$tok"
 }
 
@@ -152,10 +160,12 @@ cat > /etc/unified-guide/env <<'EOF'
 UG_TMDB_API_KEY=$tmdb_key
 UG_TMDB_REGION=US
 UG_TMDB_PROVIDERS=Netflix:8,Amazon:9,Max:1899,Disney+:337,Peacock:386
-UG_JELLYFIN_URL=http://127.0.0.1:8096
+UG_JELLYFIN_URL=http://$CT_IP:8096
 UG_JELLYFIN_TOKEN=$jf_token
-UG_JELLYFIN_PUBLIC=https://jellyfin.mediastack.lan
-UG_RIVEN_PUBLIC=https://riven.mediastack.lan
+UG_JELLYFIN_PUBLIC=http://$CT_IP:8096
+UG_THREADFIN_URL=http://$CT_IP:34400
+UG_THREADFIN_XMLTV=https://tvpass.org/epg.xml
+UG_RIVEN_PUBLIC=http://$CT_IP:3000
 UG_OTA_XMLTV=/data/media/epg.xml
 UG_YTTV_CHANNELS=/data/streaming/yttv/yttv-channels.json
 UG_YTTV_EPG=/data/streaming/yttv/yttv-epg.xml
