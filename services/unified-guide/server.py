@@ -397,7 +397,7 @@ def write_unified_xmltv(records: List[Dict[str, Any]], out_path: str) -> None:
     for r in records:
         if r["source"] not in ("ota", "iptv", "yttv"):
             continue
-        cid = f"{r['source']}.{r['channel_id']}"
+        cid = r["channel_id"]  # raw ID — matches tvg-id in M3U and Jellyfin tuner
         if cid in seen_chans:
             continue
         seen_chans[cid] = r["channel_name"]
@@ -416,7 +416,7 @@ def write_unified_xmltv(records: List[Dict[str, Any]], out_path: str) -> None:
             e = datetime.fromisoformat(r["stop"])
         except Exception:
             continue
-        cid = f"{r['source']}.{r['channel_id']}"
+        cid = r["channel_id"]  # raw ID
         p = ET.SubElement(tv, "programme", {
             "channel": cid,
             "start":   fmt_xmltv(s),
