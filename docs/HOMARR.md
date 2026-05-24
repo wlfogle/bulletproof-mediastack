@@ -1,119 +1,81 @@
-# Homarr Dashboard Setup
+# Homarr — Tiamat Control Center
 
-Homarr v1 (homarr-labs) runs on **CT-275** at `http://192.168.12.241:7575`.
-Configuration is done through the web UI — there are no JSON config files in v1.
+Homarr v1 (homarr-labs) runs natively in **CT-300** at `http://192.168.12.30:7575`.
+Board name: **Tiamat Mediastack** (public — no login required to view).
+All services are consolidated in CT-300 at `192.168.12.30` unless noted.
 
-## First Login
+## Access
 
-1. Open `http://192.168.12.241:7575`
-2. Create admin account (or use existing: `homarr` / `eVSdq6xAF5pJFr9!`)
-3. Create a new board → name it **Tiamat**
+- `http://192.168.12.30:7575`
 
-## Board Layout — Apps to Add
+## Board — Current Apps (16 total)
 
-Add each app via **Add tile → App**. Set the URL, icon (auto-detected from URL), and assign to the appropriate category section.
+### Media Stack
+| App | URL |
+|-----|-----|
+| Riven | http://192.168.12.30:3000 |
+| Jellyfin | http://192.168.12.30:8096 |
+| Threadfin | http://192.168.12.30:34400/web/ |
+| Real-Debrid | https://real-debrid.com/ |
+| Unified Guide | http://192.168.12.30:7700 |
+| Sportarr | http://192.168.12.30:1867 |
 
-### Media Servers
-| App | URL | Icon |
-|-----|-----|------|
-| Jellyfin | http://192.168.12.231:8096 | jellyfin |
-| Plex | http://192.168.12.230:32400/web | plex |
-
-### Media Acquisition (*arr Stack)
-| App | URL | Icon |
-|-----|-----|------|
-| Sonarr | http://192.168.12.214:8989 | sonarr |
-| Radarr | http://192.168.12.225:7878 | radarr |
-| Readarr | http://192.168.12.217:8787 | readarr |
-| Lidarr | http://192.168.12.218:8686 | lidarr |
-| Mylar3 | http://192.168.12.221:8090 | mylar |
-| Bazarr | http://192.168.12.188:6767 | bazarr |
-
-### Indexers & Download Clients
-| App | URL | Icon |
-|-----|-----|------|
-| Prowlarr | http://192.168.12.210:9696 | prowlarr |
-| Jackett | http://192.168.12.211:9117 | jackett |
-| qBittorrent | http://192.168.12.212:8080 | qbittorrent |
-| RDT-Client | http://192.168.12.213:6500 | rdt-client |
-
-### Request & Management
-| App | URL | Icon |
-|-----|-----|------|
-| Jellyseerr | http://192.168.12.151:5055 | jellyseerr |
-| Overseerr | http://192.168.12.224:5055 | overseerr |
-| Tautulli | http://192.168.12.169:8181 | tautulli |
-
-### Libraries
-| App | URL | Icon |
-|-----|-----|------|
-| Audiobookshelf | http://192.168.12.232:13378 | audiobookshelf |
-| Calibre-Web | http://192.168.12.233:8083 | calibre-web |
-
-### Live TV / IPTV
-| App | URL | Icon |
-|-----|-----|------|
-| Threadfin | http://192.168.12.234:34400/web | threadfin |
-| Dispatcharr | http://192.168.12.235:9191 | dispatcharr |
-
-### Monitoring & Quality
-| App | URL | Icon |
-|-----|-----|------|
-| Jellystat | http://192.168.12.247:3000 | jellystat |
-| Uptime Kuma | http://192.168.12.248:3001 | uptime-kuma |
-| Recyclarr | (no UI — cron CT-245) | recyclarr |
-| Decluttarr | (no UI — journald CT-216) | decluttarr |
+### Automation
+| App | URL |
+|-----|-----|
+| n8n | http://192.168.12.30:5678 |
+| Uptime Kuma | http://192.168.12.30:3001 |
+| Pulse | http://192.168.12.30:7655 |
 
 ### Infrastructure
-| App | URL | Icon |
-|-----|-----|------|
-| Proxmox | https://192.168.12.242:8006 | proxmox |
-| Traefik | http://192.168.12.103:8080 | traefik |
-| Vaultwarden | https://192.168.12.104 | vaultwarden |
-| Authentik | http://192.168.12.107:9000 | authentik |
-| FlareSolverr | http://192.168.12.102:8191 | flaresolverr |
+| App | URL |
+|-----|-----|
+| Proxmox | https://192.168.12.242:8006 |
+| AdGuard Home | http://192.168.12.244:8081 |
+| Home Assistant | http://192.168.12.250:8123 |
+| Homarr | http://192.168.12.30:7575 |
+| Cockpit | http://192.168.12.30:9090 |
 
-### AI
-| App | URL | Icon |
-|-----|-----|------|
-| Open WebUI (Ziggy) | http://192.168.12.250:3000 | open-webui |
+### Laptop (192.168.12.172)
+| App | URL |
+|-----|-----|
+| Ollama WebUI | http://192.168.12.172:3535 |
+| Immich | http://192.168.12.172:17486 |
 
-### Bahamut (Pi)
-| App | URL | Icon |
-|-----|-----|------|
-| AdGuard Home | http://192.168.12.244:8081 | adguard-home |
-| DietPi Dashboard | http://192.168.12.244:5252 | dietpi |
+## CT-300 Port Reference
 
-## Widgets to Add
+All on `192.168.12.30`:
 
-Homarr v1 supports several useful widgets via **Add tile → Widget**:
+| Port | Service |
+|------|---------|
+| 80/443 | Caddy |
+| 1867 | Sportarr |
+| 3000 | Riven frontend |
+| 3001 | Uptime Kuma |
+| 7575 | Homarr |
+| 7655 | Pulse |
+| 7700 | Unified Guide |
+| 8080 | Riven backend |
+| 8096 | Jellyfin |
+| 9090 | Cockpit |
+| 34400 | Threadfin |
 
-- **Clock** — top of board
-- **Weather** — set your location
-- **Docker containers** — shows running/stopped status (requires docker.sock mount)
-- **Iframe** — embed Tautulli activity or Grafana panels
-- **Ping** — add pings for critical services (Jellyfin, Prowlarr, qBittorrent)
+## Database
 
-## Integrations
+Homarr stores everything in `/opt/homarr_db/db.sqlite` (SQLite).
+No user accounts — board is public.
 
-Homarr v1 supports native integrations for *arr apps and media servers.
-Go to **Settings → Integrations** and add:
+Board ID: `cJzUFLVTV2pPIg` · Layout ID: `je9xPeIfxxxqsg`
 
-| Integration | URL | API Key |
-|-------------|-----|---------|
-| Sonarr | http://192.168.12.214:8989 | 9e2127824e7446f6a2ddc5da67cfe693 |
-| Radarr | http://192.168.12.225:7878 | cc7485c9f5a64f78bfd226ffe23e2991 |
-| Readarr | http://192.168.12.217:8787 | 19566aa7fb90487ebd2c643ad8c6595d |
-| Lidarr | http://192.168.12.218:8686 | 3ff130f5566448e4bc0ce42bdf24c24e |
-| Prowlarr | http://192.168.12.210:9696 | 6719026a4a5042a99897597122fa4495 |
-| Jellyfin | http://192.168.12.231:8096 | (generate in Jellyfin → Dashboard → API Keys) |
+Section IDs:
+- `qrhRB5w6tFA1zg` — Media Stack
+- `BBrHcP7f2BhD6A` — Automation
+- `AS7cW8Ncy6Jxag` — Infrastructure
+- `iMM370vFhVmx1w` — Laptop
 
-These integrations enable calendar widgets, download activity, and library stats on the board.
+## Install / redeploy
 
-## Access From Clients
-
-| Client | URL |
-|--------|-----|
-| Laptop browser | http://192.168.12.241:7575 |
-| Android / Fire TV | http://homarr.tiamat.local (via Traefik) |
-| Remote (Tailscale) | http://192.168.12.241:7575 (via Tailscale mesh) |
+```
+ssh tiamat 'cd ~/bulletproof-mediastack && git pull'
+bash scripts/install-homarr-ct300.sh
+```
