@@ -54,6 +54,7 @@ All services run inside this single privileged Debian 12 LXC.
 | n8n | 5678 | `http://192.168.12.30:5678` / `n8n.tiamat.local` |
 | Threadfin (IPTV proxy) | 34400 | `http://192.168.12.30:34400/web` / `threadfin.tiamat.local` |
 | Uptime Kuma | 3001 | `http://192.168.12.30:3001` / `uptime.tiamat.local` |
+| Homarr (dashboard) | 7575 | `http://192.168.12.30:7575` / `homarr.mediastack.lan` · board: `/boards/Tiamat%20Mediastack` · login: `admin` / `Mediastack2024!` |
 | Pulse (Proxmox monitor) | — | web UI port in `/etc/pulse/.env` |
 | Caddy (reverse proxy) | 80/443 | handles all `*.tiamat.local` + `*.mediastack.lan` routes |
 | PostgreSQL 15 | 5432 | internal only (`riven` database) |
