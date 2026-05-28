@@ -76,7 +76,8 @@
 | 242 | Jellyseerr | http://192.168.12.242:5055/ | (existing) | (existing) | 🔒 TMDB key sourced from `settings.json` here |
 | 200 | alexa-media-bridge | (HA-internal) | — | — | 🔒 |
 | 279 | Tailscale | (CLI) | tskey-auth-... | — | 🔒 |
-| 990 (VM) | Home Assistant OS | http://192.168.12.123:8123/ | `loufogle` | (your existing pw) | 🔒 |
+| 990 (VM) | Home Assistant OS | http://192.168.12.123:8123/ | `haos` | `haos` | ✅ reset 2026-05-28 |
+| 990 (VM) | HAOS SSH add-on | port 22222 | `root` | `homeassist` | ✅ |
 | 901 (VM) | windows-gaming | console | (Windows local) | — | 🔒 |
 
 ## Bahamut Pi (`192.168.12.244`)

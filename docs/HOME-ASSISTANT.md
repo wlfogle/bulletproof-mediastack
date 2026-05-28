@@ -1,9 +1,9 @@
-# Home Assistant — VM-500
+# Home Assistant — VM-990
 
 **Status**: Online  
-**URL**: `http://192.168.12.250:8123` · `http://ha.tiamat.local`  
+**URL**: `http://192.168.12.123:8123` · `http://ha.tiamat.local`  
 **Type**: HAOS (Home Assistant OS) — bare VM, not LXC  
-**Traefik route**: `ha.tiamat.local` → `192.168.12.250:8123`  
+**Caddy route: `ha.tiamat.local` → `192.168.12.123:8123` (CT-300 Caddy)`  
 **Phase**: Phase 10 (added 2026-04-07)
 
 ---
@@ -68,8 +68,7 @@ bash infrastructure/homeassistant/deploy.sh             # apply + restart
 
 ## Integrations (UI-configured — not YAML)
 
-- **Jellyfin** — `192.168.12.231:8096`
-- **Plex** — `192.168.12.230:32400` (token from plex.tv)
+- **Jellyfin** — `192.168.12.30:8096 (CT-300)`
 - **Ollama** — `192.168.12.172:11434` (set as conversation agent in Voice Assistants)
 - **Uptime Kuma** — optional via HACS integration
 
@@ -107,11 +106,11 @@ Get API keys from:
 ## Proxmox VM config
 
 ```
-VM ID:  500
+VM ID:  990
 Type:   HAOS (KVM)
 CPU:    2 cores (host)
 RAM:    2 GB
 Disk:   32 GB
-IP:     192.168.12.250 (static)
+IP:     192.168.12.123 (set static DHCP reservation on router for MAC 02:88:F9:77:28:E2)
 Boot:   tier 1 (starts first, before all CTs)
 ```
