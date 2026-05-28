@@ -81,7 +81,7 @@ Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwar
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
 | VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough |
-| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub — ⚠️ set DHCP reservation on T-Mobile gateway: MAC `02:88:F9:77:28:E2` → `192.168.12.123` at http://192.168.12.1/lan → Address Reservation |
+| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub — ✅ static IP set via `ha network update enp6s18 --ipv4-method static` (permanent, no DHCP needed) |
 
 ### Laptop NFS Exports (192.168.12.172)
 | Export path | Tiamat mount | Consumer |
