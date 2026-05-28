@@ -2,13 +2,17 @@
 
 ## LAN Layout
 ```
-Router (192.168.12.1)
-├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
-├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
-├── Laptop                    → 192.168.12.172 (DHCP reservation, may appear as .204 — verify with `ip addr show enp4s0`)
-├── Fire TV                   → DHCP
-└── Tablet / phones           → DHCP
+T-Mobile (WAN/internet)
+  └── Archer AX55 Pro (192.168.12.1) — router + DHCP server
+        ├── Archer (AP mode, 192.168.12.234) — WiFi access point
+        ├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
+        ├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
+        ├── Laptop                    → 192.168.12.172 (DHCP reservation, may appear as .204)
+        ├── Fire TV ×2                → DHCP
+        └── Phones ×2                → DHCP
 ```
+
+DHCP reservations are managed at: `http://192.168.12.1` (Archer AX55 Pro admin)
 
 > "Ziggy" is now CT-900 on Tiamat (Open WebUI + SearXNG). The name no
 > longer refers to a Raspberry Pi.
@@ -77,7 +81,7 @@ Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwar
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
 | VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough |
-| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub |
+| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub — ⚠️ set DHCP reservation on T-Mobile gateway: MAC `02:88:F9:77:28:E2` → `192.168.12.123` at http://192.168.12.1/lan → Address Reservation |
 
 ### Laptop NFS Exports (192.168.12.172)
 | Export path | Tiamat mount | Consumer |
