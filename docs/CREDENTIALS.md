@@ -23,6 +23,7 @@
 | Cockpit (system control) | http://192.168.12.30:9090/ | `cockpit` | `cockpit` | ✅ (sudo group) |
 | PostgreSQL | 127.0.0.1:5432 (in CT only) | `postgres` | `postgres` | ✅ db=`riven` |
 | Redis/Valkey | 127.0.0.1:6379 (in CT only) | — (no auth) | — | bind localhost |
+| Threadfin (IPTV proxy) | http://192.168.12.30:34400/web/ · https://threadfin.tiamat.local/ | — (no auth) | — | ✅ 177ch tvpass.org, API enabled, 4 tuners |
 | Caddy (reverse proxy) | :80 / :443 | — | — | local LAN |
 
 ### Caddy TLS (internal CA — add to `/etc/hosts` on viewing devices)
@@ -34,7 +35,7 @@
 - https://cockpit.mediastack.lan
 - https://guide.mediastack.lan      (unified-guide :7700)
 - https://homarr.mediastack.lan     (Homarr dashboard :7575)
-- https://threadfin.mediastack.lan  (Threadfin :34400 — currently on CT-234)
+- https://threadfin.mediastack.lan  (Threadfin :34400 — now on CT-300)
 
 ### Persistent secrets on Tiamat host
 | Path | Contents | Mode |
@@ -71,7 +72,7 @@
 | 106 | PostgreSQL | `:5432` | (Authentik internal) | — | 🔒 |
 | 107 | Authentik (SSO) | http://192.168.12.107:9000/ | `authentik` | `authentik` | ⏳ change in admin UI to match |
 | 110 | Pulse | http://192.168.12.251:7655/ | `pulse` | `pulse` | ⏳ set on first login |
-| 234 | Threadfin (IPTV proxy) | http://192.168.12.234:34400/web/ | (admin via web UI) | (admin via web UI) | 🔒 still here pending CT-300 migration (`scripts/migrate-threadfin-to-ct300.sh`) |
+| 234 | ~~Threadfin~~ (migrated) | — | — | — | ✅ migrated to CT-300 2026-05-28 |
 | 235 | Dispatcharr (IPTV mgr) | http://192.168.12.235/ | (existing) | (existing) | 🔒 |
 | 242 | Jellyseerr | http://192.168.12.242:5055/ | (existing) | (existing) | 🔒 TMDB key sourced from `settings.json` here |
 | 200 | alexa-media-bridge | (HA-internal) | — | — | 🔒 |
