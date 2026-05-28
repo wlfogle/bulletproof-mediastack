@@ -28,7 +28,7 @@
   name: "Jellyfin Active Streams"
   resource: "http://192.168.12.231:8096/Sessions"
   headers:
-    X-Emby-Authorization: "MediaBrowser Token={{ states('input_text.jellyfin_api_key') }}"
+    X-Emby-Authorization: !secret jellyfin_auth_header
   value_template: >
     {% if value_json is iterable %}
       {{ value_json | selectattr('NowPlayingItem', 'defined') | list | count }}
@@ -54,7 +54,7 @@
 # ── Sonarr queue ──────────────────────────────────────────────
 - platform: rest
   name: "Sonarr Queue"
-  resource: "http://192.168.12.214:8989/api/v3/queue?apikey={{ states('input_text.sonarr_api_key') }}"
+  resource: "http://192.168.12.214:8989/api/v3/queue"
   method: GET
   value_template: >
     {% if value_json.totalRecords is defined %}
@@ -68,7 +68,7 @@
 # ── Radarr queue ──────────────────────────────────────────────
 - platform: rest
   name: "Radarr Queue"
-  resource: "http://192.168.12.225:7878/api/v3/queue?apikey={{ states('input_text.radarr_api_key') }}"
+  resource: "http://192.168.12.225:7878/api/v3/queue"
   method: GET
   value_template: >
     {% if value_json.totalRecords is defined %}

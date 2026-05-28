@@ -9,7 +9,7 @@
     - platform: time
       at: "08:00:00"
   action:
-    - service: script.morning_routine
+    - action: script.morning_routine
 
 # ── Service down — Jellyfin ───────────────────────────────────
 - id: alert_jellyfin_down
@@ -20,29 +20,29 @@
       to: "off"
       for: "00:02:00"
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "🚨 ALERT — Jellyfin Offline"
         message: >
-          CT-231 (192.168.12.231:8096) has been unreachable for 2 minutes.
-          Check: ssh root@192.168.12.242 'pct status 231'
+          Jellyfin on CT-300 (192.168.12.30:8096) has been unreachable for 2 minutes.
+          Check: ssh tiamat 'pct status 300'
 
-# ── Service down — Traefik ────────────────────────────────────
-- id: alert_traefik_down
-  alias: "Alert — Traefik Down"
+# ── Service down — CT-300 (main stack) ───────────────────────
+- id: alert_ct300_down
+  alias: "Alert — CT-300 Down"
   trigger:
     - platform: state
-      entity_id: binary_sensor.traefik
+      entity_id: binary_sensor.ct300_mediastack
       to: "off"
       for: "00:02:00"
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
-        title: "🚨 ALERT — Traefik Down"
+        title: "🚨 ALERT — CT-300 Mediastack Down"
         message: >
-          CT-103 (192.168.12.103) has been unreachable for 2 minutes.
-          All *.tiamat.local routes are down.
-          Check: ssh root@192.168.12.242 'pct status 103'
+          CT-300 (192.168.12.30) unreachable for 2 minutes.
+          Jellyfin, n8n, Caddy all down.
+          Check: ssh tiamat 'pct status 300'
 
 # ── Service down — Sonarr ─────────────────────────────────────
 - id: alert_sonarr_down
@@ -53,7 +53,7 @@
       to: "off"
       for: "00:05:00"
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "⚠️ Sonarr Offline"
         message: "CT-214 (192.168.12.214:8989) unreachable for 5 min."
@@ -67,7 +67,7 @@
       to: "off"
       for: "00:05:00"
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "⚠️ Radarr Offline"
         message: "CT-225 (192.168.12.225:7878) unreachable for 5 min."
@@ -81,7 +81,7 @@
       to: "off"
       for: "00:05:00"
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "⚠️ Ollama Offline"
         message: >
@@ -102,10 +102,10 @@
       for: "00:01:00"
       before: true
   action:
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "✅ Jellyfin Back Online"
-        message: "CT-231 (192.168.12.231:8096) is responding again."
+        message: "Jellyfin on CT-300 (192.168.12.30:8096) is responding again."
 
 # ── Weekly library scan — Sunday 03:00 ───────────────────────
 - id: weekly_library_scan
@@ -118,4 +118,4 @@
       weekday:
         - sun
   action:
-    - service: script.media_scan
+    - action: script.media_scan

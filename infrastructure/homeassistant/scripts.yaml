@@ -9,9 +9,9 @@ movie_night:
   alias: "Movie Night"
   icon: mdi:movie-open
   sequence:
-    - service: rest_command.check_jellyfin
+    - action: rest_command.check_jellyfin
     - delay: "00:00:02"
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "🎬 Movie Night"
         message: >
@@ -23,13 +23,13 @@ system_status:
   alias: "System Status"
   icon: mdi:server-network
   sequence:
-    - service: rest_command.check_traefik
-    - service: rest_command.check_sonarr
-    - service: rest_command.check_radarr
-    - service: rest_command.check_ollama
-    - service: rest_command.check_internet
+    - action: rest_command.check_traefik
+    - action: rest_command.check_sonarr
+    - action: rest_command.check_radarr
+    - action: rest_command.check_ollama
+    - action: rest_command.check_internet
     - delay: "00:00:02"
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "🖥️ Tiamat Systems Report"
         message: >
@@ -46,10 +46,10 @@ ai_status:
   alias: "AI Status"
   icon: mdi:robot
   sequence:
-    - service: rest_command.check_ollama
-    - service: rest_command.ollama_list_models
+    - action: rest_command.check_ollama
+    - action: rest_command.ollama_list_models
     - delay: "00:00:01"
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "🤖 AI Systems"
         message: >
@@ -62,11 +62,11 @@ download_status:
   alias: "Download Status"
   icon: mdi:download-circle
   sequence:
-    - service: rest_command.check_sonarr
-    - service: rest_command.check_radarr
-    - service: rest_command.check_rdtclient
+    - action: rest_command.check_sonarr
+    - action: rest_command.check_radarr
+    - action: rest_command.check_rdtclient
     - delay: "00:00:02"
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "⬇️ Download Status"
         message: >
@@ -79,10 +79,10 @@ pause_all_media:
   alias: "Pause All Media"
   icon: mdi:pause-circle
   sequence:
-    - service: media_player.media_pause
+    - action: media_player.media_pause
       target:
         entity_id: all
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "⏸️ All Media Paused"
         message: "All active media playback has been paused."
@@ -92,10 +92,10 @@ media_scan:
   alias: "Media Library Scan"
   icon: mdi:library-shelves
   sequence:
-    - service: rest_command.jellyfin_library_scan
-    - service: rest_command.sonarr_refresh_all
-    - service: rest_command.radarr_refresh_all
-    - service: persistent_notification.create
+    - action: rest_command.jellyfin_library_scan
+    - action: rest_command.sonarr_refresh_all
+    - action: rest_command.radarr_refresh_all
+    - action: persistent_notification.create
       data:
         title: "📚 Library Scan Started"
         message: "Jellyfin, Sonarr, and Radarr are refreshing their libraries."
@@ -105,10 +105,10 @@ morning_routine:
   alias: "Morning Routine"
   icon: mdi:weather-sunny
   sequence:
-    - service: script.system_status
+    - action: script.system_status
     - delay: "00:00:03"
-    - service: script.download_status
-    - service: persistent_notification.create
+    - action: script.download_status
+    - action: persistent_notification.create
       data:
         title: "🌅 Good Morning — Tiamat Online"
         message: >
@@ -122,9 +122,9 @@ evening_routine:
   alias: "Evening Mode"
   icon: mdi:weather-night
   sequence:
-    - service: script.system_status
+    - action: script.system_status
     - delay: "00:00:02"
-    - service: persistent_notification.create
+    - action: persistent_notification.create
       data:
         title: "🌙 Evening Mode — Tiamat"
         message: "All systems nominal. Entering low-power monitoring mode."
@@ -134,12 +134,12 @@ computer_report:
   alias: "Computer Report"
   icon: mdi:clipboard-pulse
   sequence:
-    - service: script.system_status
+    - action: script.system_status
     - delay: "00:00:02"
-    - service: script.download_status
+    - action: script.download_status
     - delay: "00:00:02"
-    - service: script.ai_status
-    - service: persistent_notification.create
+    - action: script.ai_status
+    - action: persistent_notification.create
       data:
         title: "📋 Full Tiamat Report"
         message: >
