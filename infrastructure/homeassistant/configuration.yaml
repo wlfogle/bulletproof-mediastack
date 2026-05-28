@@ -45,10 +45,23 @@ alexa:
         - script.ai_status
         - script.download_status
         - script.pause_all_media
+        - script.resume_media
         - script.morning_routine
         - script.evening_routine
         - script.media_scan
+        - script.media_scan_full
         - script.computer_report
+        - script.check_jellyfin
+        - script.check_live_tv
+        - script.update_live_tv
+        - script.check_riven
+        - script.request_content
+        - script.jdownloader_status
+        - script.whats_new
+        - script.ct300_health
+        - script.check_storage
+        - script.check_network
+        - script.full_infrastructure
 
 # ── Ollama — local AI conversation agent ──────────────────────
 # Configure via UI: Settings → Voice Assistants → Add Assistant

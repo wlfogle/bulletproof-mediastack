@@ -28,8 +28,9 @@ die() { echo "ERROR: $*" >&2; exit 1; }
   die "secrets.yaml not found. Copy secrets.yaml.example → secrets.yaml and fill in values."
 
 SSH_OPTS="-p $HA_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
+SCP_OPTS="-P $HA_PORT -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
 SSH="sshpass -p $HA_PASS ssh $SSH_OPTS"
-SCP="sshpass -p $HA_PASS scp $SSH_OPTS"
+SCP="sshpass -p $HA_PASS scp $SCP_OPTS"
 
 if $DRY_RUN; then
   log "DRY RUN — files that would be copied:"

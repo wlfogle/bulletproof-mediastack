@@ -1,8 +1,7 @@
 # ============================================================
-# Intent Scripts — HA Assist / Conversation
+# Intent Scripts — HA Assist / Conversation (2026-05-28)
 # Wake word: "Computer" (configure in Settings → Voice Assistants)
-# These handle natural-language phrases routed by the Assist pipeline
-# backed by Ollama (http://192.168.12.172:11434)
+# Backed by Ollama (http://192.168.12.172:11434)
 # ============================================================
 
 ComputerStatus:
@@ -13,10 +12,11 @@ ComputerStatus:
         Tiamat systems online. Proxmox
         {{ 'nominal' if is_state('binary_sensor.tiamat_proxmox','on') else 'OFFLINE' }},
         Jellyfin
-        {{ 'streaming' if is_state('binary_sensor.jellyfin','on') else 'OFFLINE' }},
-        Ollama AI
-        {{ 'ready' if is_state('binary_sensor.ollama','on') else 'OFFLINE' }}.
-        {{ states('sensor.sonarr_queue') }} items in download queue.
+        {{ 'streaming' if is_state('binary_sensor.jellyfin','on') else 'OFFLINE' }}
+        with {{ states('sensor.jellyfin_active_streams') }} active streams,
+        Riven {{ states('sensor.riven_status') }},
+        Live TV {{ states('sensor.threadfin_channels') }} channels,
+        Ollama AI {{ states('sensor.ollama_status') }}.
 
 ComputerMovieNight:
   description: "Activate movie night mode"
@@ -24,24 +24,25 @@ ComputerMovieNight:
     - service: script.movie_night
     - set_conversation_response: >
         Activating movie night. Jellyfin is
-        {{ 'online with ' + states('sensor.jellyfin_active_streams') + ' active streams' if is_state('binary_sensor.jellyfin','on') else 'OFFLINE — check CT-231' }}.
+        {{ 'online with ' + states('sensor.jellyfin_active_streams') + ' active streams' if is_state('binary_sensor.jellyfin','on') else 'OFFLINE' }}.
+        {{ states('sensor.threadfin_channels') }} live TV channels available.
 
 ComputerDownloads:
-  description: "Check download queue status"
+  description: "Check download and content pipeline status"
   action:
     - service: script.download_status
     - set_conversation_response: >
-        Download status: Sonarr has {{ states('sensor.sonarr_queue') }} items,
-        Radarr has {{ states('sensor.radarr_queue') }} items queued.
-        RDT Client is {{ 'online' if is_state('binary_sensor.rdt_client','on') else 'offline' }}.
+        Content pipeline: Riven is {{ states('sensor.riven_status') }}.
+        JDownloader2 bridge active. Real-Debrid connected.
+        Request content at http://192.168.12.30:3000.
 
 ComputerAI:
   description: "AI services status"
   action:
     - service: script.ai_status
     - set_conversation_response: >
-        AI systems: {{ states('sensor.ollama_status') }}.
-        Open WebUI available at port 3000.
+        AI systems: Ollama {{ states('sensor.ollama_status') }}.
+        Tiamat Computer voice assistant active.
 
 ComputerPause:
   description: "Pause all media playback"
@@ -49,12 +50,62 @@ ComputerPause:
     - service: script.pause_all_media
     - set_conversation_response: "All media playback paused."
 
+ComputerResume:
+  description: "Resume all media playback"
+  action:
+    - service: script.resume_media
+    - set_conversation_response: "All media playback resumed."
+
 ComputerScan:
   description: "Scan all media libraries"
   action:
     - service: script.media_scan
+    - set_conversation_response: "Library scan initiated on Jellyfin."
+
+ComputerLiveTV:
+  description: "Live TV and Threadfin status"
+  action:
+    - service: script.check_live_tv
     - set_conversation_response: >
-        Library scan initiated across Jellyfin, Sonarr, and Radarr.
+        Live TV: Threadfin has {{ states('sensor.threadfin_channels') }} channels loaded
+        from tvpass.org. EPG from tvpass.org and OTA zap2xml.
+        Guide at http://192.168.12.30:34400/web.
+
+ComputerUpdateTV:
+  description: "Refresh live TV channels and EPG"
+  action:
+    - service: script.update_live_tv
+    - set_conversation_response: "Updating Threadfin M3U playlist, XMLTV EPG, and channel guide."
+
+ComputerWhatsNew:
+  description: "Check recent additions to library"
+  action:
+    - service: script.whats_new
+    - set_conversation_response: >
+        Checking recent additions. Open Jellyfin at
+        http://192.168.12.30:8096 for the latest movies and shows.
+
+ComputerRequest:
+  description: "Request new content via Riven"
+  action:
+    - service: script.request_content
+    - set_conversation_response: >
+        To request content, open Riven at http://192.168.12.30:3000.
+        Search for a title and click Request. The pipeline will
+        handle Real-Debrid, JDownloader, and Jellyfin ingest automatically.
+
+ComputerNetwork:
+  description: "Check network and infrastructure status"
+  action:
+    - service: script.check_network
+    - set_conversation_response: >
+        Network status: Proxmox
+        {{ 'online' if is_state('binary_sensor.tiamat_proxmox','on') else 'OFFLINE' }},
+        Bahamut Pi
+        {{ 'online' if is_state('binary_sensor.bahamut','on') else 'OFFLINE' }},
+        HABridge
+        {{ 'online' if is_state('binary_sensor.habridge','on') else 'OFFLINE' }},
+        Tailscale active on CT-300.
 
 ComputerMorning:
   description: "Morning briefing"
@@ -62,13 +113,36 @@ ComputerMorning:
     - service: script.morning_routine
     - set_conversation_response: >
         Good morning, Commander. Tiamat is online.
-        {{ states('sensor.sonarr_queue') }} TV episodes and
-        {{ states('sensor.radarr_queue') }} movies in queue.
+        Jellyfin: {{ states('sensor.jellyfin_active_streams') }} streams.
+        Riven: {{ states('sensor.riven_status') }}.
+        Live TV: {{ states('sensor.threadfin_channels') }} channels.
 
 ComputerReport:
   description: "Full diagnostic report"
   action:
     - service: script.computer_report
     - set_conversation_response: >
-        Full report compiled. All services checked.
-        Tiamat: {{ 'nominal' if is_state('binary_sensor.tiamat_proxmox','on') else 'DEGRADED' }}.
+        Full report compiled. Tiamat:
+        {{ 'nominal' if is_state('binary_sensor.tiamat_proxmox','on') else 'DEGRADED' }}.
+        Media: {{ states('sensor.jellyfin_active_streams') }} streams.
+        Riven: {{ states('sensor.riven_status') }}.
+        Live TV: {{ states('sensor.threadfin_channels') }} channels.
+        AI: {{ states('sensor.ollama_status') }}.
+
+ComputerInfrastructure:
+  description: "Full infrastructure report of all services"
+  action:
+    - service: script.full_infrastructure
+    - set_conversation_response: >
+        Full infrastructure scan complete. All CT-300 services checked:
+        Jellyfin, Riven, Threadfin, Caddy, Homarr, Unified Guide,
+        n8n, PostgreSQL, Redis, CrowdSec, JD2 bridge, MetaTube, Tailscale.
+        External nodes: Proxmox, Bahamut, HABridge, Ollama all checked.
+
+ComputerStorage:
+  description: "Check disk storage status"
+  action:
+    - service: script.check_storage
+    - set_conversation_response: >
+        Storage check triggered. Disk watchdog monitors /mnt/hdd
+        with warning at 80% and critical at 88%.

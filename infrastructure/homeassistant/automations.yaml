@@ -1,5 +1,6 @@
 # ============================================================
-# Automations — Alert, Schedule, Self-heal
+# Automations — Alert, Schedule, Self-heal (2026-05-28)
+# Sonarr/Radarr removed (stopped CTs; Riven replaces)
 # ============================================================
 
 # ── Daily morning briefing at 08:00 ──────────────────────────
@@ -24,8 +25,8 @@
       data:
         title: "🚨 ALERT — Jellyfin Offline"
         message: >
-          Jellyfin on CT-300 (192.168.12.30:8096) has been unreachable for 2 minutes.
-          Check: ssh tiamat 'pct status 300'
+          Jellyfin on CT-300 (192.168.12.30:8096) unreachable for 2 minutes.
+          Check: ssh tiamat 'pct exec 300 -- systemctl status jellyfin'
 
 # ── Service down — CT-300 (main stack) ───────────────────────
 - id: alert_ct300_down
@@ -41,36 +42,24 @@
         title: "🚨 ALERT — CT-300 Mediastack Down"
         message: >
           CT-300 (192.168.12.30) unreachable for 2 minutes.
-          Jellyfin, n8n, Caddy all down.
+          All services down: Jellyfin, Riven, Threadfin, Caddy.
           Check: ssh tiamat 'pct status 300'
 
-# ── Service down — Sonarr ─────────────────────────────────────
-- id: alert_sonarr_down
-  alias: "Alert — Sonarr Down"
+# ── Service down — Riven ──────────────────────────────────────
+- id: alert_riven_down
+  alias: "Alert — Riven Down"
   trigger:
     - platform: state
-      entity_id: binary_sensor.sonarr
-      to: "off"
-      for: "00:05:00"
+      entity_id: sensor.riven_status
+      to: "Offline"
+      for: "00:03:00"
   action:
     - action: persistent_notification.create
       data:
-        title: "⚠️ Sonarr Offline"
-        message: "CT-214 (192.168.12.214:8989) unreachable for 5 min."
-
-# ── Service down — Radarr ─────────────────────────────────────
-- id: alert_radarr_down
-  alias: "Alert — Radarr Down"
-  trigger:
-    - platform: state
-      entity_id: binary_sensor.radarr
-      to: "off"
-      for: "00:05:00"
-  action:
-    - action: persistent_notification.create
-      data:
-        title: "⚠️ Radarr Offline"
-        message: "CT-225 (192.168.12.225:7878) unreachable for 5 min."
+        title: "⚠️ Riven Offline"
+        message: >
+          Riven backend (192.168.12.30:8080) unreachable for 3 min.
+          Content pipeline paused. Check: ssh tiamat 'pct exec 300 -- systemctl status riven'
 
 # ── Service down — Ollama ─────────────────────────────────────
 - id: alert_ollama_down
@@ -94,13 +83,8 @@
   trigger:
     - platform: state
       entity_id: binary_sensor.jellyfin
+      from: "off"
       to: "on"
-  condition:
-    - condition: state
-      entity_id: binary_sensor.jellyfin
-      state: "off"
-      for: "00:01:00"
-      before: true
   action:
     - action: persistent_notification.create
       data:
@@ -119,3 +103,12 @@
         - sun
   action:
     - action: script.media_scan
+
+# ── Threadfin auto-update — daily 04:00 ──────────────────────
+- id: daily_threadfin_update
+  alias: "Daily Threadfin EPG Update"
+  trigger:
+    - platform: time
+      at: "04:00:00"
+  action:
+    - action: script.update_live_tv
