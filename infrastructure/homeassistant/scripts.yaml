@@ -1,10 +1,12 @@
 # ============================================================
-# Scripts — Voice Control Commands ("Star Trek Computer")
-# Triggered via Alexa ("Alexa, turn on <script name>")
-# or HA Assist ("Computer, <phrase>") via intent_script.yaml
+# Scripts — Complete Voice Control Suite (2026-05-28)
+# "Alexa, turn on <name>" or "Computer, <phrase>"
 # ============================================================
 
-# ── "Computer, movie night" ───────────────────────────────────
+# ════════════════════════════════════════════════════════════
+# MEDIA PLAYBACK
+# ════════════════════════════════════════════════════════════
+
 movie_night:
   alias: "Movie Night"
   icon: mdi:movie-open
@@ -17,31 +19,194 @@ movie_night:
         message: >
           Jellyfin: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
           | Active streams: {{ states('sensor.jellyfin_active_streams') }}
+          | http://192.168.12.30:8096
 
-# ── "Computer, all systems report" ───────────────────────────
-system_status:
-  alias: "System Status"
-  icon: mdi:server-network
+pause_all_media:
+  alias: "Pause All Media"
+  icon: mdi:pause-circle
   sequence:
-    - action: rest_command.check_traefik
+    - action: media_player.media_pause
+      target:
+        entity_id: all
+    - action: persistent_notification.create
+      data:
+        title: "⏸️ All Media Paused"
+        message: "All active Jellyfin streams have been paused."
+
+resume_media:
+  alias: "Resume Media"
+  icon: mdi:play-circle
+  sequence:
+    - action: media_player.media_play
+      target:
+        entity_id: all
+    - action: persistent_notification.create
+      data:
+        title: "▶️ Media Resumed"
+        message: "Resuming all media players."
+
+check_jellyfin:
+  alias: "Check Jellyfin"
+  icon: mdi:television-play
+  sequence:
+    - action: rest_command.check_jellyfin
+    - delay: "00:00:01"
+    - action: persistent_notification.create
+      data:
+        title: "📺 Jellyfin Status"
+        message: >
+          Jellyfin on CT-300: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
+          | Streams: {{ states('sensor.jellyfin_active_streams') }}
+          | URL: http://192.168.12.30:8096
+
+# ════════════════════════════════════════════════════════════
+# LIBRARY MANAGEMENT
+# ════════════════════════════════════════════════════════════
+
+media_scan:
+  alias: "Media Library Scan"
+  icon: mdi:library-shelves
+  sequence:
+    - action: rest_command.jellyfin_library_scan
+    - action: rest_command.sonarr_refresh_all
+    - action: rest_command.radarr_refresh_all
+    - action: persistent_notification.create
+      data:
+        title: "📚 Library Scan Started"
+        message: "Jellyfin, Sonarr, and Radarr are refreshing their libraries."
+
+sonarr_search:
+  alias: "Sonarr Search"
+  icon: mdi:television-classic
+  sequence:
+    - action: rest_command.sonarr_search_missing
+    - action: persistent_notification.create
+      data:
+        title: "🔎 Sonarr Searching"
+        message: "Sonarr is searching for missing episodes."
+
+radarr_search:
+  alias: "Radarr Search"
+  icon: mdi:movie-search
+  sequence:
+    - action: rest_command.radarr_search_missing
+    - action: persistent_notification.create
+      data:
+        title: "🔎 Radarr Searching"
+        message: "Radarr is searching for missing movies."
+
+# ════════════════════════════════════════════════════════════
+# RIVEN (Post-arr pipeline)
+# ════════════════════════════════════════════════════════════
+
+check_riven:
+  alias: "Check Riven"
+  icon: mdi:film
+  sequence:
+    - action: rest_command.check_riven
+    - action: persistent_notification.create
+      data:
+        title: "🎬 Riven Status"
+        message: >
+          Riven backend: {{ 'Online' if is_state('binary_sensor.ct300_mediastack', 'on') else 'OFFLINE' }}
+          | UI: http://192.168.12.30:3000
+          | API: http://192.168.12.30:8080
+
+riven_scan:
+  alias: "Riven Scan"
+  icon: mdi:magnify-scan
+  sequence:
+    - action: rest_command.riven_scan_trigger
+    - action: persistent_notification.create
+      data:
+        title: "🔍 Riven Scan"
+        message: "Riven content scan triggered."
+
+# ════════════════════════════════════════════════════════════
+# DOWNLOADS
+# ════════════════════════════════════════════════════════════
+
+download_status:
+  alias: "Download Status"
+  icon: mdi:download-circle
+  sequence:
     - action: rest_command.check_sonarr
     - action: rest_command.check_radarr
-    - action: rest_command.check_ollama
-    - action: rest_command.check_internet
     - delay: "00:00:02"
     - action: persistent_notification.create
       data:
-        title: "🖥️ Tiamat Systems Report"
+        title: "⬇️ Download Status"
         message: >
-          PROXMOX: {{ 'Online' if is_state('binary_sensor.tiamat_proxmox', 'on') else 'OFFLINE' }}
-          | TRAEFIK: {{ 'Online' if is_state('binary_sensor.traefik', 'on') else 'OFFLINE' }}
-          | JELLYFIN: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
-          | SONARR: {{ 'Online' if is_state('binary_sensor.sonarr', 'on') else 'OFFLINE' }}
-          | RADARR: {{ 'Online' if is_state('binary_sensor.radarr', 'on') else 'OFFLINE' }}
-          | OLLAMA: {{ 'Online' if is_state('binary_sensor.ollama', 'on') else 'OFFLINE' }}
-          | INTERNET: {{ 'Online' if is_state('binary_sensor.traefik', 'on') else 'OFFLINE' }}
+          Sonarr: {{ 'Online' if is_state('binary_sensor.sonarr', 'on') else 'OFFLINE' }}
+          queue: {{ states('sensor.sonarr_queue') }} items
+          | Radarr: {{ 'Online' if is_state('binary_sensor.radarr', 'on') else 'OFFLINE' }}
+          queue: {{ states('sensor.radarr_queue') }} items
 
-# ── "Computer, AI status" ─────────────────────────────────────
+# ════════════════════════════════════════════════════════════
+# LIVE TV
+# ════════════════════════════════════════════════════════════
+
+check_live_tv:
+  alias: "Check Live TV"
+  icon: mdi:broadcast
+  sequence:
+    - action: rest_command.check_threadfin
+    - action: persistent_notification.create
+      data:
+        title: "📡 Live TV Status"
+        message: >
+          Threadfin IPTV: {{ 'Online' if is_state('binary_sensor.ct300_mediastack', 'on') else 'OFFLINE' }}
+          | http://192.168.12.30:34400/web
+
+# ════════════════════════════════════════════════════════════
+# CT-300 HEALTH
+# ════════════════════════════════════════════════════════════
+
+ct300_health:
+  alias: "CT-300 Health"
+  icon: mdi:heart-pulse
+  sequence:
+    - action: rest_command.check_ct300
+    - action: rest_command.check_riven
+    - action: rest_command.check_n8n
+    - action: rest_command.n8n_health_check
+    - delay: "00:00:02"
+    - action: persistent_notification.create
+      data:
+        title: "📊 CT-300 Health"
+        message: >
+          CT-300: {{ 'Online' if is_state('binary_sensor.ct300_mediastack', 'on') else 'OFFLINE' }}
+          | Jellyfin: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
+          | Sonarr: {{ 'Online' if is_state('binary_sensor.sonarr', 'on') else 'OFFLINE' }}
+          | Radarr: {{ 'Online' if is_state('binary_sensor.radarr', 'on') else 'OFFLINE' }}
+
+check_storage:
+  alias: "Check Storage"
+  icon: mdi:harddisk
+  sequence:
+    - action: rest_command.n8n_disk_guard
+    - action: persistent_notification.create
+      data:
+        title: "💾 Storage Check"
+        message: >
+          CT-300 disk check triggered via n8n.
+          Check notifications at http://192.168.12.30:5678
+
+jellyfin_restart:
+  alias: "Restart Jellyfin"
+  icon: mdi:restart
+  sequence:
+    - action: persistent_notification.create
+      data:
+        title: "♻️ Jellyfin Restart"
+        message: >
+          Jellyfin restart requested. CT-300 must be running.
+          Manual: ssh tiamat 'pct exec 300 -- systemctl restart jellyfin'
+
+# ════════════════════════════════════════════════════════════
+# AI SERVICES
+# ════════════════════════════════════════════════════════════
+
 ai_status:
   alias: "AI Status"
   icon: mdi:robot
@@ -55,52 +220,55 @@ ai_status:
         message: >
           Ollama: {{ states('sensor.ollama_status') }}
           | Endpoint: http://192.168.12.172:11434
-          | Open WebUI: http://192.168.12.220:3000
+          | Open WebUI: http://192.168.12.30:3000
 
-# ── "Computer, download status" ───────────────────────────────
-download_status:
-  alias: "Download Status"
-  icon: mdi:download-circle
+# ════════════════════════════════════════════════════════════
+# FULL SYSTEM
+# ════════════════════════════════════════════════════════════
+
+system_status:
+  alias: "System Status"
+  icon: mdi:server-network
   sequence:
+    - action: rest_command.check_ct300
     - action: rest_command.check_sonarr
     - action: rest_command.check_radarr
-    - action: rest_command.check_rdtclient
+    - action: rest_command.check_ollama
+    - action: rest_command.check_internet
     - delay: "00:00:02"
     - action: persistent_notification.create
       data:
-        title: "⬇️ Download Status"
+        title: "🖥️ Tiamat Systems Report"
         message: >
-          Sonarr queue: {{ states('sensor.sonarr_queue') }} items
-          | Radarr queue: {{ states('sensor.radarr_queue') }} items
-          | RDT Client: {{ 'Online' if is_state('binary_sensor.rdt_client', 'on') else 'OFFLINE' }}
+          CT-300: {{ 'Online' if is_state('binary_sensor.ct300_mediastack', 'on') else 'OFFLINE' }}
+          | Jellyfin: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
+          | Sonarr: {{ 'Online' if is_state('binary_sensor.sonarr', 'on') else 'OFFLINE' }}
+          | Radarr: {{ 'Online' if is_state('binary_sensor.radarr', 'on') else 'OFFLINE' }}
+          | Ollama: {{ 'Online' if is_state('binary_sensor.ollama', 'on') else 'OFFLINE' }}
+          | Proxmox: {{ 'Online' if is_state('binary_sensor.tiamat_proxmox', 'on') else 'OFFLINE' }}
 
-# ── "Computer, pause everything" ─────────────────────────────
-pause_all_media:
-  alias: "Pause All Media"
-  icon: mdi:pause-circle
+computer_report:
+  alias: "Computer Report"
+  icon: mdi:clipboard-pulse
   sequence:
-    - action: media_player.media_pause
-      target:
-        entity_id: all
+    - action: script.system_status
+    - delay: "00:00:03"
+    - action: script.download_status
+    - delay: "00:00:02"
+    - action: script.ai_status
     - action: persistent_notification.create
       data:
-        title: "⏸️ All Media Paused"
-        message: "All active media playback has been paused."
+        title: "📋 Full Tiamat Report"
+        message: >
+          Systems: {{ 'Nominal' if is_state('binary_sensor.tiamat_proxmox', 'on') else 'DEGRADED' }}
+          | Media: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
+          | AI: {{ 'Online' if is_state('binary_sensor.ollama', 'on') else 'OFFLINE' }}
+          | Downloads: Sonarr {{ states('sensor.sonarr_queue') }}, Radarr {{ states('sensor.radarr_queue') }}
 
-# ── "Computer, scan media library" ───────────────────────────
-media_scan:
-  alias: "Media Library Scan"
-  icon: mdi:library-shelves
-  sequence:
-    - action: rest_command.jellyfin_library_scan
-    - action: rest_command.sonarr_refresh_all
-    - action: rest_command.radarr_refresh_all
-    - action: persistent_notification.create
-      data:
-        title: "📚 Library Scan Started"
-        message: "Jellyfin, Sonarr, and Radarr are refreshing their libraries."
+# ════════════════════════════════════════════════════════════
+# ROUTINES
+# ════════════════════════════════════════════════════════════
 
-# ── "Computer, morning report" ────────────────────────────────
 morning_routine:
   alias: "Morning Routine"
   icon: mdi:weather-sunny
@@ -113,37 +281,31 @@ morning_routine:
         title: "🌅 Good Morning — Tiamat Online"
         message: >
           All systems initialising. Good morning, Commander.
-          Sonarr: {{ states('sensor.sonarr_queue') }} items queued.
-          Radarr: {{ states('sensor.radarr_queue') }} items queued.
+          Sonarr: {{ states('sensor.sonarr_queue') }} episodes queued.
+          Radarr: {{ states('sensor.radarr_queue') }} movies queued.
           Jellyfin streams: {{ states('sensor.jellyfin_active_streams') }}.
 
-# ── "Computer, evening mode" ──────────────────────────────────
 evening_routine:
   alias: "Evening Mode"
   icon: mdi:weather-night
   sequence:
-    - action: script.system_status
+    - action: script.ct300_health
     - delay: "00:00:02"
     - action: persistent_notification.create
       data:
         title: "🌙 Evening Mode — Tiamat"
-        message: "All systems nominal. Entering low-power monitoring mode."
+        message: "All systems nominal. Good evening, Commander."
 
-# ── "Computer, full report" ───────────────────────────────────
-computer_report:
-  alias: "Computer Report"
-  icon: mdi:clipboard-pulse
+media_scan_full:
+  alias: "Full Media Scan"
+  icon: mdi:magnify
   sequence:
-    - action: script.system_status
-    - delay: "00:00:02"
-    - action: script.download_status
-    - delay: "00:00:02"
-    - action: script.ai_status
+    - action: rest_command.jellyfin_library_scan
+    - action: rest_command.sonarr_refresh_all
+    - action: rest_command.radarr_refresh_all
+    - action: rest_command.sonarr_search_missing
+    - action: rest_command.radarr_search_missing
     - action: persistent_notification.create
       data:
-        title: "📋 Full Tiamat Report"
-        message: >
-          Systems: {{ states('binary_sensor.tiamat_proxmox') | upper }}
-          | Media: {{ states('binary_sensor.jellyfin') | upper }}
-          | AI: {{ states('binary_sensor.ollama') | upper }}
-          | Downloads: Sonarr {{ states('sensor.sonarr_queue') }}, Radarr {{ states('sensor.radarr_queue') }}
+        title: "🔄 Full Scan + Search"
+        message: "Jellyfin refresh + Sonarr/Radarr refresh and missing search all triggered."

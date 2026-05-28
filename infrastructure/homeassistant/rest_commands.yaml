@@ -1,74 +1,64 @@
 # ============================================================
-# REST Commands
-# FIX #3: all use method: GET (HEAD is not supported)
+# REST Commands — Complete CT-300 stack (2026-05-28)
 # ============================================================
 
-# ── Health checks ─────────────────────────────────────────────
+# ── CT-300 core services ──────────────────────────────────────
+check_ct300:
+  url: "http://192.168.12.30:8096/System/Info/Public"
+  method: GET
+  timeout: 10
+
 check_jellyfin:
-  url: "http://192.168.12.231:8096/System/Info/Public"
+  url: "http://192.168.12.30:8096/System/Info/Public"
   method: GET
   timeout: 10
 
-check_plex:
-  url: "http://192.168.12.230:32400/identity"
+check_riven:
+  url: "http://192.168.12.30:8080/api/v1/items"
   method: GET
   timeout: 10
 
-check_ollama:
-  url: "http://192.168.12.172:11434/api/version"
+check_n8n:
+  url: "http://192.168.12.30:5678"
   method: GET
   timeout: 10
 
-check_traefik:
-  url: "http://192.168.12.103:8080/api/overview"
+check_threadfin:
+  url: "http://192.168.12.30:34400"
   method: GET
   timeout: 10
 
+check_uptime_kuma:
+  url: "http://192.168.12.30:3001"
+  method: GET
+  timeout: 10
+
+check_homarr:
+  url: "http://192.168.12.30:7575"
+  method: GET
+  timeout: 10
+
+# ── Riven ─────────────────────────────────────────────────────
+riven_scan_trigger:
+  url: "http://192.168.12.30:8080/api/v1/requests"
+  method: GET
+  timeout: 15
+
+# ── Jellyfin ──────────────────────────────────────────────────
+jellyfin_library_scan:
+  url: "http://192.168.12.30:8096/Library/Refresh"
+  method: POST
+  headers:
+    X-Emby-Authorization: !secret jellyfin_auth_header
+  timeout: 30
+
+# ── Sonarr ────────────────────────────────────────────────────
 check_sonarr:
   url: "http://192.168.12.214:8989/api/v3/system/status"
   method: GET
   headers:
     X-Api-Key: !secret sonarr_api_key
   timeout: 10
-
-check_radarr:
-  url: "http://192.168.12.225:7878/api/v3/system/status"
-  method: GET
-  headers:
-    X-Api-Key: !secret radarr_api_key
-  timeout: 10
-
-check_prowlarr:
-  url: "http://192.168.12.210:9696/api/v1/system/status"
-  method: GET
-  headers:
-    X-Api-Key: !secret prowlarr_api_key
-  timeout: 10
-
-check_rdtclient:
-  url: "http://192.168.12.213:6500/api/v2/torrents"
-  method: GET
-  timeout: 10
-
-check_uptime_kuma:
-  url: "http://192.168.12.248:3001"
-  method: GET
-  timeout: 10
-
-check_internet:
-  url: "https://1.1.1.1"
-  method: GET
-  timeout: 5
-
-# ── Sonarr ────────────────────────────────────────────────────
-sonarr_series_search_all:
-  url: "http://192.168.12.214:8989/api/v3/command"
-  method: POST
-  headers:
-    X-Api-Key: !secret sonarr_api_key
-    Content-Type: application/json
-  payload: '{"name":"missingEpisodeSearch"}'
-  timeout: 30
 
 sonarr_refresh_all:
   url: "http://192.168.12.214:8989/api/v3/command"
@@ -79,15 +69,22 @@ sonarr_refresh_all:
   payload: '{"name":"refreshSeries"}'
   timeout: 30
 
-# ── Radarr ────────────────────────────────────────────────────
-radarr_movie_search:
-  url: "http://192.168.12.225:7878/api/v3/command"
+sonarr_search_missing:
+  url: "http://192.168.12.214:8989/api/v3/command"
   method: POST
   headers:
-    X-Api-Key: !secret radarr_api_key
+    X-Api-Key: !secret sonarr_api_key
     Content-Type: application/json
-  payload: '{"name":"missingMoviesSearch"}'
+  payload: '{"name":"missingEpisodeSearch"}'
   timeout: 30
+
+# ── Radarr ────────────────────────────────────────────────────
+check_radarr:
+  url: "http://192.168.12.225:7878/api/v3/system/status"
+  method: GET
+  headers:
+    X-Api-Key: !secret radarr_api_key
+  timeout: 10
 
 radarr_refresh_all:
   url: "http://192.168.12.225:7878/api/v3/command"
@@ -98,16 +95,47 @@ radarr_refresh_all:
   payload: '{"name":"refreshMovie"}'
   timeout: 30
 
-# ── Jellyfin ─────────────────────────────────────────────────
-jellyfin_library_scan:
-  url: "http://192.168.12.231:8096/Library/Refresh"
+radarr_search_missing:
+  url: "http://192.168.12.225:7878/api/v3/command"
   method: POST
   headers:
-    X-Emby-Authorization: !secret jellyfin_auth_header
+    X-Api-Key: !secret radarr_api_key
+    Content-Type: application/json
+  payload: '{"name":"missingMoviesSearch"}'
   timeout: 30
 
-# ── Ollama ───────────────────────────────────────────────────
+# ── Prowlarr ──────────────────────────────────────────────────
+check_prowlarr:
+  url: "http://192.168.12.210:9696/api/v1/system/status"
+  method: GET
+  headers:
+    X-Api-Key: !secret prowlarr_api_key
+  timeout: 10
+
+# ── Ollama ────────────────────────────────────────────────────
+check_ollama:
+  url: "http://192.168.12.172:11434/api/version"
+  method: GET
+  timeout: 10
+
 ollama_list_models:
   url: "http://192.168.12.172:11434/api/tags"
   method: GET
   timeout: 10
+
+# ── n8n operations ────────────────────────────────────────────
+n8n_health_check:
+  url: "http://192.168.12.30:9876/health"
+  method: GET
+  timeout: 10
+
+n8n_disk_guard:
+  url: "http://192.168.12.30:9876/disk-guard"
+  method: GET
+  timeout: 15
+
+# ── Internet ──────────────────────────────────────────────────
+check_internet:
+  url: "https://1.1.1.1"
+  method: GET
+  timeout: 5
