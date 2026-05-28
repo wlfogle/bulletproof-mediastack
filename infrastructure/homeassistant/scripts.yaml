@@ -10,14 +10,12 @@ movie_night:
   icon: mdi:movie-open
   sequence:
     - service: rest_command.check_jellyfin
-    - service: rest_command.check_plex
     - delay: "00:00:02"
     - service: persistent_notification.create
       data:
         title: "🎬 Movie Night"
         message: >
           Jellyfin: {{ 'Online' if is_state('binary_sensor.jellyfin', 'on') else 'OFFLINE' }}
-          | Plex: {{ 'Online' if is_state('binary_sensor.plex', 'on') else 'OFFLINE' }}
           | Active streams: {{ states('sensor.jellyfin_active_streams') }}
 
 # ── "Computer, all systems report" ───────────────────────────

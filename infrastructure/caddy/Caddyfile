@@ -88,7 +88,7 @@ threadfin.tiamat.local {
 ha.tiamat.local, homeassistant.tiamat.local {
     tls internal
     import headers
-    reverse_proxy http://192.168.12.250:8123
+    reverse_proxy http://192.168.12.123:8123
 }
 
 # Sonarr/Radarr/Prowlarr still routed for when those CTs are started
@@ -108,4 +108,9 @@ prowlarr.tiamat.local {
     tls internal
     import headers
     reverse_proxy http://192.168.12.210:9696
+}
+
+# HABridge CT-501 — Alexa/Hue voice control bridge
+habridge.tiamat.local {
+    reverse_proxy http://192.168.12.251:80
 }

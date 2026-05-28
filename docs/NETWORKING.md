@@ -36,14 +36,21 @@ iface vmbr0 inet static
 
 ## Core Service Map
 
-> **Consolidated 2026-05-22**: All Proxmox LXC services merged into CT-300. Only CT-300 remains.
+> **Consolidated 2026-05-22**: All Proxmox LXC services merged into CT-300.
+> **2026-05-28**: CT-501 `habridge` added for Alexa/Hue voice control.
 
 ### Proxmox host
 | Service | URL |
 |---|---|
 | Proxmox UI | `https://192.168.12.242:8006` |
 
-### CT-300 `mediastack` — the only running LXC (192.168.12.30)
+### CT-501 `habridge` — Alexa voice bridge (192.168.12.251)
+| Service | Port | URL |
+|---|---|---|
+| HABridge web UI + Hue API | 80 | `http://192.168.12.251` / `habridge.tiamat.local` |
+| UPnP/SSDP discovery | 1900/udp | (Alexa auto-discovers on LAN) |
+
+### CT-300 `mediastack` (192.168.12.30)
 All services run inside this single privileged Debian 12 LXC.
 
 | Service | Internal port | URL / hostname |
@@ -63,13 +70,14 @@ All services run inside this single privileged Debian 12 LXC.
 | Tailscale | — | node `tiamat-tailscale` · `100.115.82.71` · funnel `https://tiamat-tailscale.tail9d8b73.ts.net` |
 
 **Decommissioned CTs (2026-05-22):** CT-102 (n8n-stable), CT-103 (Traefik), CT-104 (Vaultwarden), CT-105 (Valkey), CT-106 (Postgres), CT-107 (Authentik), CT-110 (Pulse), CT-200 (HA DuckDNS proxy), CT-234 (Threadfin), CT-248 (Uptime Kuma), CT-279 (Tailscale)
+**Running CTs (2026-05-28):** CT-300 `mediastack` (192.168.12.30), CT-501 `habridge` (192.168.12.251)
 Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwarden_data.tgz` in CT-300.
 
 ### VMs (unchanged)
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
 | VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough |
-| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.250` | Smart home hub |
+| VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub |
 
 ### Laptop NFS Exports (192.168.12.172)
 | Export path | Tiamat mount | Consumer |
@@ -111,7 +119,8 @@ Config: `infrastructure/caddy/Caddyfile` (also live at `/etc/caddy/Caddyfile` in
 | `n8n.tiamat.local` | n8n | `127.0.0.1:5678` |
 | `uptime.tiamat.local`, `uptimekuma.tiamat.local` | Uptime Kuma | `127.0.0.1:3001` |
 | `threadfin.tiamat.local` | Threadfin | `192.168.12.30:34400` |
-| `ha.tiamat.local`, `homeassistant.tiamat.local` | Home Assistant VM-990 | `192.168.12.250:8123` |
+| ha.tiamat.local, homeassistant.tiamat.local | Home Assistant VM-990 | `192.168.12.123:8123` |
+| habridge.tiamat.local | HABridge CT-501 | `192.168.12.251:80` |
 | `sonarr.tiamat.local` | Sonarr (stopped CT-214) | `192.168.12.214:8989` |
 | `radarr.tiamat.local` | Radarr (stopped CT-215) | `192.168.12.225:7878` |
 | `prowlarr.tiamat.local` | Prowlarr (stopped CT-210) | `192.168.12.210:9696` |
@@ -134,9 +143,13 @@ Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi) runs:
 - Vaultwarden (native): `https://192.168.12.244` (TLS via DuckDNS caddy)
 - Caddy (Docker): handles `*.lou-fogle-media-stack.duckdns.org` TLS
   - `vaultwarden.*` → `localhost:8080`
-  - `ha.*` → `192.168.12.250:8123` (Home Assistant VM-990)
-  - `wg.*` → `localhost:51821`
-  - `adguard.*` → `localhost:8081`
+  - `ha.*` → `192.168.12.123:8123` (Home Assistant VM-990)
+|- `wg.*` → `localhost:51821`
+|- `adguard.*` → `localhost:8081`
+
+> **AdGuard DNS rewrites required for voice control:**
+> Add `habridge.tiamat.local → 192.168.12.30` (CT-300 Caddy) and
+> `ha.tiamat.local → 192.168.12.30` alongside the existing `*.tiamat.local` wildcard.
 - DietPi Dashboard: `:5252`
 - TigerVNC: `:5901`
 

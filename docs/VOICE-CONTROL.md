@@ -9,29 +9,26 @@ Control your entire Tiamat homelab with voice commands via Alexa and Home Assist
 ```
 You speak
     │
-    ▼
-Alexa Echo device  ──────────────────────────────────────────┐
-    │                                                         │
-    │ UPnP/SSDP discovery (LAN)                              │ Smart Home skill
-    ▼                                                         │ (optional cloud path)
-CT-501 HABridge (192.168.12.251)                             │
-Java app emulating Philips Hue bridge                        │
-    │                                                         │
-    │ HTTP to HA REST API                                     │
-    └─────────────────────┐                                   │
-                          ▼                                   │
-            VM-500 Home Assistant (192.168.12.250:8123) ◄─────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-    Jellyfin CT-231   Sonarr CT-214   Ollama (laptop)
-    Radarr CT-225     Prowlarr CT-210  192.168.12.172:11434
-    All 20+ services via REST commands
+    ├── Fire TV (Living Room / Bedroom) ──────────────────────┐
+    │       Alexa built-in                                    │ Smart Home skill
+    │       UPnP/SSDP discovery (LAN)                        │ (optional cloud)
+    │       ▼                                                 │
+    │   CT-501 HABridge (192.168.12.251:80)  ◄───────────────┘
+    │   Java Hue emulator
+    │       │ HTTP POST to HA REST API
+    │       ▼
+    └── VM-990 Home Assistant (192.168.12.123:8123)
+                │
+          ┌─────┴──────────────────┐
+          ▼                        ▼
+    Phone (HA Companion app)   Services via REST
+    HA Assist voice control    Jellyfin, Sonarr, Radarr
+                               Ollama (laptop :11434)
 ```
 
 **Two voice paths:**
-1. **Alexa → HABridge → HA** — "Alexa, turn on movie night" (no subscription)
-2. **HA Assist + Ollama** — "Computer, status report" via wake word (fully local AI)
+1. **Fire TV Alexa → HABridge → HA** — "Alexa, turn on movie night" (no subscription, LAN-local)
+2. **Phone → HA Assist + Ollama** — "Computer, status report" via HA Companion app (fully local AI)
 
 ---
 
@@ -47,7 +44,7 @@ pct create 501 /var/lib/vz/template/cache/debian-12-standard_*.tar.zst \
   --hostname habridge \
   --memory 512 \
   --cores 1 \
-  --net0 name=eth0,bridge=vmbr0,ip=192.168.12.251/24,gw=192.168.12.1 \
+  --net0 name=eth0,bridge=vmbr0,ip=192.168.12.251/24,gw=192.168.12.1 \ # Already created
   --storage local-lvm \
   --rootfs local-lvm:4 \
   --unprivileged 1 \
@@ -73,9 +70,9 @@ pct exec 501 -- bash -c "
 # Create config
 pct exec 501 -- bash -c "cat > /opt/habridge/config.json <<'EOF'
 {
-  \"upnpConfigAddress\": \"192.168.12.251\",
-  \"serverPort\": 8080,
-  \"upnpPort\": 1900
+  "upnpConfigAddress": "192.168.12.251",
+  "serverPort": 80,
+  "upnpPort": 1900
 }
 EOF"
 ```
@@ -92,9 +89,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/habridge
-ExecStart=/usr/bin/java -jar /opt/habridge/ha-bridge.jar
-Restart=on-failure
-RestartSec=5
+ExecStart=/usr/bin/java -jar -Dconfig.file=/opt/habridge/data/habridge.config /opt/habridge/ha-bridge.jar
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
@@ -104,30 +101,37 @@ systemctl daemon-reload && systemctl enable --now habridge"
 
 ### Map HA scripts to fake Hue devices
 
-1. Open `http://192.168.12.251:8080` (HABridge web UI)
-2. Click **Add Device** for each script:
+**9 devices are already configured in habridge** (added 2026-05-28 via REST API).
+They all point to `http://192.168.12.123:8123` with `Authorization: Bearer REPLACE_WITH_HA_TOKEN`.
 
-| Device Name | On Command | Off Command |
-|-------------|-----------|-------------|
-| Movie Night | `http://192.168.12.250:8123/api/services/script/movie_night` POST | (none) |
-| System Status | `http://192.168.12.250:8123/api/services/script/system_status` POST | (none) |
-| AI Status | `http://192.168.12.250:8123/api/services/script/ai_status` POST | (none) |
-| Download Status | `http://192.168.12.250:8123/api/services/script/download_status` POST | (none) |
-| Pause All Media | `http://192.168.12.250:8123/api/services/script/pause_all_media` POST | (none) |
-| Media Scan | `http://192.168.12.250:8123/api/services/script/media_scan` POST | (none) |
-| Morning Routine | `http://192.168.12.250:8123/api/services/script/morning_routine` POST | (none) |
-| Computer Report | `http://192.168.12.250:8123/api/services/script/computer_report` POST | (none) |
+**After you have a HA long-lived token, update each device:**
+1. Open `http://192.168.12.251` (HABridge web UI) or `http://habridge.tiamat.local`
+2. Edit each device → replace `REPLACE_WITH_HA_TOKEN` with your real token
 
-Add HA long-lived token as a header on each device:
-`Authorization: Bearer YOUR_HA_LONG_LIVED_TOKEN`
+**Or use the REST API to update in bulk** (see `scripts/update-habridge-token.sh`).
 
-Get token: HA → Profile → Long-Lived Access Tokens → Create Token
+**Get token:** HA → Profile → Long-Lived Access Tokens → Create Token
+(`http://192.168.12.123:8123/profile`)
 
-### Alexa discovery
+| Device Name | HA Script | Status |
+|-------------|-----------|--------|
+| Movie Night | `script.movie_night` | ✅ configured, needs token |
+| System Status | `script.system_status` | ✅ configured, needs token |
+| AI Status | `script.ai_status` | ✅ configured, needs token |
+| Download Status | `script.download_status` | ✅ configured, needs token |
+| Pause All Media | `script.pause_all_media` | ✅ configured, needs token |
+| Media Scan | `script.media_scan` | ✅ configured, needs token |
+| Morning Routine | `script.morning_routine` | ✅ configured, needs token |
+| Evening Routine | `script.evening_routine` | ✅ configured, needs token |
+| Computer Report | `script.computer_report` | ✅ configured, needs token |
 
-1. Open Alexa app → Devices → **Discover Devices**
-2. Wait 20–45 seconds
-3. All HABridge devices appear as lights
+### Alexa discovery (Fire TV)
+
+1. On your Fire TV: **Settings → Alexa → Smart Home Devices → Discover Devices**
+   OR say **"Alexa, discover my devices"** to your Fire TV
+2. Wait 20–45 seconds — HABridge responds to UPnP/SSDP on LAN
+3. All 9 devices appear as lights in Alexa
+4. Optionally manage via the Alexa app on your phone
 
 ---
 
@@ -148,7 +152,7 @@ Once discovered, say:
 
 ### Alexa Routines (say it naturally)
 
-In the Alexa app, create routines:
+In the Alexa app on your phone (or Fire TV settings), create routines:
 
 | When you say | Action |
 |-------------|--------|
@@ -172,7 +176,7 @@ For fully local, AI-powered voice control with natural language:
    - Host: `192.168.12.172`
    - Port: `11434`
    - Model: `llama3.1:8b`
-5. Wake word: **"Computer"** (requires a microphone device paired to HA)
+5. Wake word: **"Computer"** — use HA Companion app on your phone as the mic device
 
 ### Available intents (from intent_script.yaml)
 
@@ -187,9 +191,9 @@ For fully local, AI-powered voice control with natural language:
 | "good morning" | `ComputerMorning` | Morning briefing |
 | "full report" | `ComputerReport` | Complete system diagnostic |
 
-### HA Assist via phone/tablet
+### HA Assist via phone
 
-Install the **Home Assistant** app → Companion app → tap the microphone icon → speak.
+Install the **Home Assistant** app (Android/iOS) → log in at `http://192.168.12.123:8123` → tap the microphone icon → speak.
 
 ---
 
@@ -214,9 +218,9 @@ In the Alexa app (More → Routines → +):
 ## Monitoring
 
 All voice-triggered actions create persistent notifications in HA visible at:
-`http://192.168.12.250:8123` → Notifications (bell icon)
+`http://192.168.12.123:8123` → Notifications (bell icon)
 
-Service health dashboard: `http://192.168.12.248:3001` (Uptime Kuma)
+Service health dashboard: `http://192.168.12.30:3001` (Uptime Kuma in CT-300)
 
 ---
 
@@ -227,13 +231,13 @@ Service health dashboard: `http://192.168.12.248:3001` (Uptime Kuma)
 # Verify HABridge is running
 pct exec 501 -- systemctl status habridge
 # Check HABridge web UI
-curl http://192.168.12.251:8080
+curl http://192.168.12.251
 ```
 
 **HA script not triggering:**
 ```bash
 # Test HA REST directly
-curl -X POST http://192.168.12.250:8123/api/services/script/system_status \
+curl -X POST http://192.168.12.123:8123/api/services/script/system_status \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json"
 ```

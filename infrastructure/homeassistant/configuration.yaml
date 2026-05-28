@@ -1,5 +1,5 @@
 # ============================================================
-# Home Assistant — VM-500 @ 192.168.12.250:8123 (HAOS)
+# Home Assistant — VM-990 @ 192.168.12.123:8123 (HAOS)
 # Star Trek Computer Voice Control Hub
 #
 # Deploy: run infrastructure/homeassistant/deploy.sh
@@ -19,7 +19,7 @@ homeassistant:
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    - 192.168.12.103   # CT-103 Traefik
+    - 192.168.12.30    # CT-300 Caddy (replaces CT-103 Traefik)
     - 127.0.0.1
 
 # ── Core integrations ─────────────────────────────────────────
