@@ -27,10 +27,15 @@ api:
 hassio:
 default_config:
 
-# ── Alexa Smart Home (local, via HABridge CT-501) ────────────
-# HABridge emulates Hue bridge; Alexa discovers devices locally.
+# ── Suppress Hue auto-discovery (HABridge is not a real Hue hub) ─────────
+# HA finds HABridge via SSDP and tries to add it as a Hue integration.
+# We don't want that — HABridge calls HA, not the other way around.
+hue:
+  discovery: false
+
+# ── Alexa Smart Home (local, via HABridge in CT-300:8089) ─────────────────
+# HABridge emulates Hue bridge; Alexa (Fire TV) discovers via UPnP/SSDP.
 # No Nabu Casa subscription required.
-# See docs/VOICE-CONTROL.md for HABridge setup.
 alexa:
   smart_home:
     locale: en-US
@@ -97,3 +102,5 @@ logger:
     homeassistant.components.alexa: info
     homeassistant.components.rest:  warning
     homeassistant.components.conversation: info
+    homeassistant.components.hue: error
+    homeassistant.components.hue.config_flow: critical

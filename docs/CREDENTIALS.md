@@ -52,6 +52,14 @@
 | `/etc/yttv-scraper/env` | YouTube-TV scraper paths (browse.json path, output dir) | 0644 |
 | `/opt/homarr.env` | Homarr `SECRET_ENCRYPTION_KEY`, DB driver/url, AUTH_PROVIDERS | 0600 |
 
+## CT-300 SSH access
+
+| Method | Command | User | Pass | Notes |
+|---|---|---|---|---|
+| Key auth (preferred) | `ssh ct-300` | `root` | (ed25519 key) | alias in `~/.ssh/config` → `192.168.12.30` |
+| Password auth | `ssh root@192.168.12.30` | `root` | `mediastack` | fallback if key not loaded |
+| Console (Proxmox) | `ssh tiamat "pct enter 300"` | `root` | (no pass needed inside CT) | ✅ always works |
+
 ## Tiamat host (`192.168.12.242`)
 
 | Service | URL | User | Pass | Status |

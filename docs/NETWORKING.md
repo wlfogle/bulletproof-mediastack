@@ -48,7 +48,7 @@ iface vmbr0 inet static
 |---|---|
 | Proxmox UI | `https://192.168.12.242:8006` |
 
-### CT-501 `habridge` — Alexa voice bridge (192.168.12.251)
+### HABridge — Alexa voice bridge (CT-300 internal, port 8089)
 | Service | Port | URL |
 |---|---|---|
 | HABridge web UI + Hue API | 80 | `http://192.168.12.251` / `habridge.tiamat.local` |
