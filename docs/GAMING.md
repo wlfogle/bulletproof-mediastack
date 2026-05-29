@@ -29,11 +29,30 @@ Switch NSPs from laptop `/media/loufogle/Games/roms/`.
 - Access: VNC or `http://games.tiamat.local` via Traefik (EmulationStation web)
 - Play from: laptop, Fire TV (Moonlight/VNC), any device on LAN
 
-## Windows Gaming VM (VM-901)
-- Windows 11 26H1 on Tiamat
-- RX 580 GPU passthrough (VFIO)
-- 240GB SSD passthrough (`/dev/sdb`) for game storage
-- 300GB LVM OS disk
+## Windows Gaming VM (VM-900)
+- Windows 11 on Tiamat (`pc-q35-11.0`, OVMF/UEFI)
+- **RX 580 GPU passthrough** (VFIO, `pcie=1,x-vga=1`) — exclusively for gaming
+- 150GB virtio OS disk on local-ssd
+- 16GB RAM, **4 vCPUs** (`cpu: host,hidden=1` — KVM hidden for anti-cheat)
+- AMD Adrenalin **26.5.2** installed (5/20/2026)
+- Access: NoMachine remote desktop or direct HDMI/DP from RX 580
+
+### Gaming Optimizations Applied (2026-05-29)
+- Proxmox: `cpu: host,hidden=1` — hides KVM hypervisor from anti-cheat
+- Proxmox: 4 cores (up from 2)
+- Windows: High Performance power plan active
+- Windows: Hardware Accelerated GPU Scheduling (HAGS) enabled
+- Windows: GPU MSI (Message Signaled Interrupts) enabled
+- Windows: Xbox Game DVR/Bar disabled
+- Windows: Fullscreen Optimizations disabled globally
+- Windows: Visual Effects set to Performance
+- AMD Adrenalin: Graphics Profile set to Performance
+
+> CT-300 (mediastack) switched to software decoding so the RX 580
+> is dedicated exclusively to VM-900. See `docs/HARDWARE.md`.
+
+## Windows Gaming VM (VM-901) — Legacy/Archived
+- Retired — replaced by VM-900 with direct GPU passthrough
 - PlayOn Home saves to `/mnt/hdd/media/playon` → Plex/Jellyfin
 - With 32GB RAM, can now run alongside the full media stack
 
