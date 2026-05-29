@@ -41,6 +41,16 @@ RX 580 (XFX) is **fully configured for VFIO passthrough** — no setup needed:
 
 > With GPU passed through, Proxmox host is **headless** — manage via web UI or SSH only.
 
+### GPU Assignment — VM-900 (Windows Gaming VM)
+
+As of 2026-05-29 the RX 580 is dedicated to **VM-900** (Windows gaming VM):
+
+- `/dev/dri` device passthrough **removed** from CT-300 LXC config (`/etc/pve/lxc/300.conf`)
+- Jellyfin (CT-300) switched to **software decoding/encoding** — `HardwareAccelerationType=none`, `EnableHardwareEncoding=false`, `HardwareDecodingCodecs` cleared (`/etc/jellyfin/encoding.xml`)
+- GPU is now free for exclusive VFIO passthrough to VM-900
+
+To attach the GPU to VM-900 via Proxmox web UI: Hardware → Add → PCI Device → select `09:00.0` (and `09:00.1` for HDMI audio) with PCIe enabled.
+
 ## Storage on Tiamat
 
 | Device | Size | Use |
