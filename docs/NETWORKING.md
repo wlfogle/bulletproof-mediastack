@@ -2,9 +2,8 @@
 
 ## LAN Layout
 ```
-T-Mobile (WAN/internet)
-  └── Archer AX55 Pro (192.168.12.1) — router + DHCP server
-        ├── Archer (AP mode, 192.168.12.234) — WiFi access point
+T-Mobile Gateway (CGNAT — no bridge mode, locked DNS, no port forwarding)
+  └── Archer AX55 Pro (192.168.12.1) — Router mode, DHCP server, DNS → AdGuard
         ├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
         ├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
         ├── Laptop                    → 192.168.12.172 (DHCP reservation, may appear as .204)
@@ -12,7 +11,12 @@ T-Mobile (WAN/internet)
         └── Phones ×2                → DHCP
 ```
 
+> **Why Router mode (not AP mode):** T-Mobile gateway has locked DNS (cannot point to AdGuard)
+> and no DHCP reservation support. The Archer must control DHCP/DNS for the entire LAN.
+> Double NAT is harmless — Tailscale handles remote access and CGNAT blocks inbound regardless.
+
 DHCP reservations are managed at: `http://192.168.12.1` (Archer AX55 Pro admin)
+DHCP DNS pushed to all clients: Primary `192.168.12.244` (AdGuard), Secondary `1.1.1.1`
 
 > "Ziggy" is now CT-900 on Tiamat (Open WebUI + SearXNG). The name no
 > longer refers to a Raspberry Pi.
@@ -48,7 +52,7 @@ iface vmbr0 inet static
 |---|---|
 | Proxmox UI | `https://192.168.12.242:8006` |
 
-### HABridge — Alexa voice bridge (CT-300 internal, port 8089)
+### HABridge — Alexa voice bridge (CT-300, port 80)
 | Service | Port | URL |
 |---|---|---|
 | HABridge web UI + Hue API | 80 | `http://192.168.12.251` / `habridge.tiamat.local` |
