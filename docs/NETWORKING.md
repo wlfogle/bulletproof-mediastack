@@ -2,21 +2,26 @@
 
 ## LAN Layout
 ```
-T-Mobile Gateway (CGNAT — no bridge mode, locked DNS, no port forwarding)
-  └── Archer AX55 Pro (192.168.12.1) — Router mode, DHCP server, DNS → AdGuard
+T-Mobile KVD21 Gateway (192.168.12.1) — DHCP server, CGNAT, locked DNS, no settings
+  └── Archer AX55 Pro (192.168.12.234) — AP mode (WiFi + switch only, no routing)
         ├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
         ├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
-        ├── Laptop                    → 192.168.12.172 (DHCP reservation, may appear as .204)
+        ├── Laptop                    → 192.168.12.172 (WiFi) / .204 (Ethernet)
         ├── Fire TV ×2                → DHCP
         └── Phones ×2                → DHCP
 ```
 
-> **Why Router mode (not AP mode):** T-Mobile gateway has locked DNS (cannot point to AdGuard)
-> and no DHCP reservation support. The Archer must control DHCP/DNS for the entire LAN.
-> Double NAT is harmless — Tailscale handles remote access and CGNAT blocks inbound regardless.
+> **Why AP mode (not Router mode):** The T-Mobile KVD21 gateway blocks internet forwarding
+> when a second router does NAT behind it — even the Archer itself cannot ping 1.1.1.1 in
+> Router mode. The KVD21 admin UI has no configurable settings (DNS, DHCP, port forwarding
+> are all locked). AP mode is the only viable configuration.
 
-DHCP reservations are managed at: `http://192.168.12.1` (Archer AX55 Pro admin)
-DHCP DNS pushed to all clients: Primary `192.168.12.244` (AdGuard), Secondary `1.1.1.1`
+Archer AP admin: `http://192.168.12.234` (static IP set in AP mode LAN settings)
+KVD21 admin: `http://192.168.12.1` (read-only status only — no configurable settings)
+
+> **DNS note:** KVD21's DHCP pushes its own DNS (not AdGuard). Set AdGuard DNS manually
+> per-device per `docs/ADGUARD-DEVICE-SETUP.md`. Critical infrastructure (Tiamat, Bahamut,
+> CTs, Home Assistant) already has static DNS pointing to `192.168.12.244`.
 
 > "Ziggy" is now CT-900 on Tiamat (Open WebUI + SearXNG). The name no
 > longer refers to a Raspberry Pi.
@@ -39,7 +44,7 @@ iface vmbr0 inet static
     bridge-ports enp3s0
     bridge-stp off
     bridge-fd 0
-    dns-nameservers 192.168.12.1
+    dns-nameservers 192.168.12.244
 ```
 
 ## Core Service Map
