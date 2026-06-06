@@ -14,13 +14,18 @@
         reverse_proxy localhost:8080
     }
 
-    @wg host wg.lou-fogle-media-stack.duckdns.org
-    handle @wg {
-        reverse_proxy localhost:51821
-    }
-
     @adguard host adguard.lou-fogle-media-stack.duckdns.org
     handle @adguard {
         reverse_proxy localhost:8081
+    }
+
+    @ha host ha.lou-fogle-media-stack.duckdns.org
+    handle @ha {
+        reverse_proxy 192.168.12.123:8123 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 }

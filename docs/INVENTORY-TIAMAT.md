@@ -1,4 +1,7 @@
 # Tiamat Inventory
+
+> **Historical/reference note:** This document may describe an older pre-NexusOS or pre-Riven architecture. Current live source of truth is `docs/NETWORKING.md`, `docs/NEXUSOS-COMPONENT.md`, and `README.md`. WireGuard, wg-easy, CT-100/CT-101, Traefik, Authentik, zurg, rclone, Docker-first Bahamut, and old multi-CT *arr flows are not active unless a current doc explicitly says otherwise.
+
 Generated 2026-05-01T17:43:34Z by `bulletproof-mediastack/scripts` snapshot of `pct config` / `qm config` / `pvesm status`.
 
 Bahamut (Pi 4) is not included; it's separately managed and unaffected by this stack.

@@ -7,6 +7,15 @@ request UI, one player. From "search a show" to "playing in Jellyfin" in
 Forked from [`wlfogle/homelab-media-stack`](https://github.com/wlfogle/homelab-media-stack)
 after 11 deployment attempts of the *arr stack failed on a single 1.8 TB HDD.
 
+## NexusOS component status
+
+`bulletproof-mediastack` is the first major NexusOS component. It is both the
+live homelab/media-stack source of truth and the prototype for the future
+NexusOS media/network module. Treat working source code here as component code,
+not throwaway deployment notes. Historical *arr, VPN, zurg, rclone, Traefik,
+and Docker-first attempts are retained only when they explain why the current
+native Riven/Real-Debrid design exists.
+
 ## Architecture
 
 ```text
@@ -124,7 +133,7 @@ encountered or known-likely on this hardware:
 - **Tiamat** — Proxmox VE host, AMD Ryzen 5 3600, 32 GB RAM, RX 580 (VAAPI),
   `local-ssd` thin pool on a dedicated SSD (the 1.8 TB HDD is no longer in
   the data path; it only holds backups).
-- **Bahamut** — Pi 4 (DNS / VPN / Vaultwarden), untouched.
+- **Bahamut** — Pi 4 (native AdGuard DNS, native Caddy+DuckDNS, native Vaultwarden). Docker, wg-easy, and WireGuard are removed from the active architecture.
 
 CT-300 sizing: 6 cores, 8 GB RAM, 24 GB rootfs on `local-ssd`.
 
@@ -173,6 +182,8 @@ FORCE_RECREATE=1 STORAGE=local-ssd bash /opt/bulletproof-mediastack/scripts/depl
 
 ## Related
 
+- NexusOS component notes: `docs/NEXUSOS-COMPONENT.md`
+- Shell standard: `docs/SHELL-STANDARD.md`
 - Riven: https://github.com/rivenmedia/riven
 - Riven frontend: https://github.com/rivenmedia/riven-frontend
 - Jellyfin: https://jellyfin.org

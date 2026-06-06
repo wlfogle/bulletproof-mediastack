@@ -6,32 +6,17 @@ AdGuard Home is already running on Bahamut (`192.168.12.244`). This guide covers
 
 ---
 
-## Step 1 — Router (covers all DHCP devices automatically)
+## Step 1 — Router ⚠️ NOT POSSIBLE WITH KVD21
 
-Go to `http://192.168.12.1` → DHCP settings → set DNS servers:
-
-- **Primary DNS:** `192.168.12.244`
-- **Secondary DNS:** `1.1.1.1`
-
-This propagates to all DHCP clients (phones ×2, Fire TVs ×2, laptop if not static) on lease renewal. Highest-leverage single change.
+The T-Mobile KVD21 gateway (`http://192.168.12.1`) has **no configurable settings** —
+DHCP DNS is locked and cannot be changed via the app or web UI.
+Per-device DNS configuration (Steps 2–6 below) is the only option.
 
 ---
 
-## Step 2 — Tiamat (Proxmox host, 192.168.12.242)
+## Step 2 — Tiamat (Proxmox host, 192.168.12.242) ✅ DONE
 
-`/etc/network/interfaces` currently has `dns-nameservers 192.168.12.1`. Change it:
-
-```
-dns-nameservers 192.168.12.244
-```
-
-Then restart networking:
-
-```bash
-systemctl restart networking
-# or
-ifreload -a
-```
+`/etc/network/interfaces` has `dns-nameservers 192.168.12.244` (already set).
 
 ---
 
@@ -96,3 +81,12 @@ dig +short jellyfin.tiamat.local
 ```
 
 The wildcard rewrite `*.tiamat.local → 192.168.12.30` in AdGuard is the key dependency for all Caddy-served local hostnames. Once all devices use AdGuard DNS, those hostnames resolve everywhere on the LAN automatically.
+
+
+## Future OpenWrt/UE300 path
+
+When the TP-Link UE300 is plugged into Tiamat and passed through/bridged to
+VM-100, OpenWrt becomes the DHCP/DNS control plane for physical devices. At
+that point this per-device guide becomes fallback-only: OpenWrt DHCP should
+hand out `192.168.12.244` as DNS to phones, Fire TVs, laptops, CTs, and VMs,
+and firewall rules can prevent clients from bypassing AdGuard.

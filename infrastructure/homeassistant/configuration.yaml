@@ -33,40 +33,63 @@ default_config:
 hue:
   discovery: false
 
-# ── Alexa Smart Home (local, via HABridge in CT-300:8089) ─────────────────
-# HABridge emulates Hue bridge; Alexa (Fire TV) discovers via UPnP/SSDP.
-# No Nabu Casa subscription required.
-alexa:
-  smart_home:
-    locale: en-US
-    filter:
-      include_domains:
-        - script
-        - switch
-        - input_boolean
-      include_entities:
-        - script.movie_night
-        - script.system_status
-        - script.ai_status
-        - script.download_status
-        - script.pause_all_media
-        - script.resume_media
-        - script.morning_routine
-        - script.evening_routine
-        - script.media_scan
-        - script.media_scan_full
-        - script.computer_report
-        - script.check_jellyfin
-        - script.check_live_tv
-        - script.update_live_tv
-        - script.check_riven
-        - script.request_content
-        - script.jdownloader_status
-        - script.whats_new
-        - script.ct300_health
-        - script.check_storage
-        - script.check_network
-        - script.full_infrastructure
+# ── Emulated Hue — Alexa voice control (local, no Nabu Casa) ──────────────
+# HA emulates a Philips Hue bridge directly. Alexa discovers it via SSDP
+# on the local network. "Alexa, turn on movie night" works with no cloud.
+# This replaces CT-501 HABridge — simpler, same network, no relay needed.
+emulated_hue:
+  host_ip: 192.168.12.123
+  listen_port: 8300
+  expose_by_default: false
+  entities:
+    script.movie_night:
+      name: "movie night"
+      hidden: false
+    script.system_status:
+      name: "system status"
+      hidden: false
+    script.ai_status:
+      name: "AI status"
+      hidden: false
+    script.download_status:
+      name: "download status"
+      hidden: false
+    script.pause_all_media:
+      name: "pause all media"
+      hidden: false
+    script.resume_media:
+      name: "resume media"
+      hidden: false
+    script.morning_routine:
+      name: "morning routine"
+      hidden: false
+    script.evening_routine:
+      name: "evening routine"
+      hidden: false
+    script.media_scan:
+      name: "media scan"
+      hidden: false
+    script.computer_report:
+      name: "computer report"
+      hidden: false
+    script.check_jellyfin:
+      name: "check jellyfin"
+      hidden: false
+    script.check_live_tv:
+      name: "check live TV"
+      hidden: false
+    script.whats_new:
+      name: "whats new"
+      hidden: false
+    script.check_storage:
+      name: "check storage"
+      hidden: false
+    script.check_network:
+      name: "check network"
+      hidden: false
+    script.full_infrastructure:
+      name: "full infrastructure report"
+      hidden: false
 
 # ── Ollama — local AI conversation agent ──────────────────────
 # Configure via UI: Settings → Voice Assistants → Add Assistant

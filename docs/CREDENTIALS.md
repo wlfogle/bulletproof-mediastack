@@ -67,37 +67,35 @@
 | Proxmox VE | https://192.168.12.242:8006/ | `root@pam` | (existing root pw) | 🔒 |
 | ProxMenux Monitor | http://192.168.12.242:8008/ | — (no auth) | — | ✅ |
 | SSH | `ssh root@192.168.12.242` | `root` | (key auth, ssh-agent) | 🔒 |
+| OpenWrt VM-100 LuCI | http://10.10.0.1/ | `root` | Tiamat:`/root/openwrt-root-password` | ✅ |
+| OpenWrt VM-100 SSH | `ssh root@10.10.0.1` from Tiamat | `root` | Tiamat:`/root/openwrt-root-password` | ✅ |
 
-## Other CTs / VMs (still running)
+## Other CTs / VMs (active only)
 
-| CT | Service | URL | User | Pass | Status |
+| CT/VM | Service | URL | User | Pass | Status |
 |---|---|---|---|---|---|
-| 100 | wireguard server | `:51820/udp` | (key auth) | — | 🔒 |
-| 101 | wg-proxy / TinyProxy | http://192.168.12.101:8888/ | — (no auth) | — | 🔒 |
-| 103 | Traefik | http://192.168.12.103:8080/ | — (no auth) | — | 🔒 |
-| 104 | Vaultwarden | https://192.168.12.104/ | (your master) | (your master) | 🔒 master-password preserved |
-| 105 | Valkey | `:6379` (LAN) | — | — | 🔒 |
-| 106 | PostgreSQL | `:5432` | (Authentik internal) | — | 🔒 |
-| 107 | Authentik (SSO) | http://192.168.12.107:9000/ | `authentik` | `authentik` | ⏳ change in admin UI to match |
-| 110 | Pulse | http://192.168.12.251:7655/ | `pulse` | `pulse` | ⏳ set on first login |
-| 234 | ~~Threadfin~~ (migrated) | — | — | — | ✅ migrated to CT-300 2026-05-28 |
-| 235 | Dispatcharr (IPTV mgr) | http://192.168.12.235/ | (existing) | (existing) | 🔒 |
-| 242 | Jellyseerr | http://192.168.12.242:5055/ | (existing) | (existing) | 🔒 TMDB key sourced from `settings.json` here |
-| 200 | alexa-media-bridge | (HA-internal) | — | — | 🔒 |
-| 279 | Tailscale | (CLI) | tskey-auth-... | — | 🔒 |
-| 990 (VM) | Home Assistant OS | http://192.168.12.123:8123/ | `haos` | `haos` | ✅ reset 2026-05-28 |
-| 990 (VM) | HAOS SSH add-on | port 22222 | `root` | `homeassist` | ✅ |
-| 901 (VM) | windows-gaming | console | (Windows local) | — | 🔒 |
+| CT-501 | HABridge | http://192.168.12.251/ | — | — | ✅ active Alexa/Hue bridge |
+| VM-100 | OpenWrt router/control plane | http://10.10.0.1/ | `root` | Tiamat:`/root/openwrt-root-password` | ✅ active virtual router, physical LAN pending UE300 |
+| VM-900/901 | Windows gaming | Proxmox console | Windows local | — | ✅ gaming-only VM; do not add WSL/toolchains unless explicitly needed |
+| VM-990 | Home Assistant OS | http://192.168.12.123:8123/ | `haos` | `haos` | ✅ static IP confirmed by qemu guest agent |
+| VM-990 | HAOS SSH add-on | port 22222 | `root` | `homeassist` | ✅ |
+
+Retired historical services: CT-100 WireGuard, CT-101 wg-proxy/TinyProxy,
+CT-103 Traefik, CT-104 Vaultwarden, CT-105 Valkey, CT-106 PostgreSQL,
+CT-107 Authentik, CT-110 Pulse, CT-200 Alexa media bridge, CT-234 Threadfin,
+CT-248 Uptime Kuma, and CT-279 Tailscale. These are not active run targets.
 
 ## Bahamut Pi (`192.168.12.244`)
 
 | Service | URL | User | Pass | Status |
 |---|---|---|---|---|
-| AdGuard Home | http://192.168.12.244:8081/ | `adguard` | `adguard` | ⏳ change in Settings → General |
-| wg-easy | http://192.168.12.244:51821/ | (master pw hash) | (master pw) | 🔒 |
-| Vaultwarden mirror | https://192.168.12.244/ | (your master) | (your master) | 🔒 |
+| AdGuard Home | http://192.168.12.244:8081/ | `adguard` | `adguard` | ✅ native service `AdGuardHome.service`; change password in UI |
+| Vaultwarden | https://vaultwarden.lou-fogle-media-stack.duckdns.org/ | (your master) | (your master) | ✅ native ARM64 binary + existing data |
+| Caddy | `:80` / `:443` | — | — | ✅ native `caddy.service` with DuckDNS module |
 | DietPi Dashboard | http://192.168.12.244:5252/ | (DietPi default) | — | 🔒 |
 | TigerVNC | 192.168.12.244:5901 | (DietPi default) | — | 🔒 |
+
+Removed from Bahamut: Docker, containerd, wg-easy, and WireGuard.
 
 ## Test files / smoke-test artifacts
 
@@ -139,7 +137,7 @@ pct exec 300 -- bash -c 'echo "cockpit:NEW_PASSWORD" | chpasswd'
 ### Real-Debrid token
 Update `/opt/bulletproof-mediastack/.env` on Tiamat → re-run `bash scripts/deploy.sh` (idempotent — picks up new token, rewrites unit, restarts riven).
 
-### Authentik admin / AdGuard / Pulse first-login
+### AdGuard first-login
 Open the URL, log in / sign up. Use the matching `servicename / servicename` value if the UI prompts.
 
 ## Quick start

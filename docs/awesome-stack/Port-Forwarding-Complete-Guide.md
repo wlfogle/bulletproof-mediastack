@@ -1,5 +1,8 @@
 # 🌐 **Complete Port Forwarding Solution - PROBLEM SOLVED!**
 
+> **Historical/reference note:** This document may describe an older pre-NexusOS or pre-Riven architecture. Current live source of truth is `docs/NETWORKING.md`, `docs/NEXUSOS-COMPONENT.md`, and `README.md`. WireGuard, wg-easy, CT-100/CT-101, Traefik, Authentik, zurg, rclone, Docker-first Bahamut, and old multi-CT *arr flows are not active unless a current doc explicitly says otherwise.
+
+
 ## 📊 **Problem Summary**
 
 **Issue**: Main router (KVD21) at `192.168.12.1` does not support port forwarding capabilities.

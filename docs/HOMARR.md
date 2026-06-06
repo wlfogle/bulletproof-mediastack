@@ -32,7 +32,7 @@ All services are consolidated in CT-300 at `192.168.12.30` unless noted.
 |-----|-----|
 | Proxmox | https://192.168.12.242:8006 |
 | AdGuard Home | http://192.168.12.244:8081 |
-| Home Assistant | http://192.168.12.250:8123 |
+| Home Assistant | http://192.168.12.123:8123 |
 | Homarr | http://192.168.12.30:7575 |
 | Cockpit | http://192.168.12.30:9090 |
 

@@ -601,6 +601,9 @@ Option 2: Use iptables on the VM for port forwarding
 On your Proxmox VM, set up forwarding rules:
 
 # Forward traffic from VM to containers
+
+> **Historical/reference note:** This document may describe an older pre-NexusOS or pre-Riven architecture. Current live source of truth is `docs/NETWORKING.md`, `docs/NEXUSOS-COMPONENT.md`, and `README.md`. WireGuard, wg-easy, CT-100/CT-101, Traefik, Authentik, zurg, rclone, Docker-first Bahamut, and old multi-CT *arr flows are not active unless a current doc explicitly says otherwise.
+
 iptables -t nat -A PREROUTING -p tcp --dport 8080 -j DNAT --to-destination <traefik-ct-ip>:8080
 iptables -t nat -A PREROUTING -p tcp --dport 8191 -j DNAT --to-destination <flaresolverr-ct-ip>:8191
 iptables -t nat -A PREROUTING -p udp --dport 51820 -j DNAT --to-destination <wireguard-ct-ip>:51820

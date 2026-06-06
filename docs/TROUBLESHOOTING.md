@@ -1,5 +1,8 @@
 # Troubleshooting
 
+> **Historical/reference note:** This document may describe an older pre-NexusOS or pre-Riven architecture. Current live source of truth is `docs/NETWORKING.md`, `docs/NEXUSOS-COMPONENT.md`, and `README.md`. WireGuard, wg-easy, CT-100/CT-101, Traefik, Authentik, zurg, rclone, Docker-first Bahamut, and old multi-CT *arr flows are not active unless a current doc explicitly says otherwise.
+
+
 ## Seerr Login (2026-04-05)
 Use local login: click **"Sign in with Seerr"** on the login page.
 - Email: `seerr@local` | Password: `seerr`
