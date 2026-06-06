@@ -26,25 +26,57 @@ KVD21 admin: `http://192.168.12.1` (read-only status only — no configurable se
 > "Ziggy" is now CT-900 on Tiamat (Open WebUI + SearXNG). The name no
 > longer refers to a Raspberry Pi.
 
+## OpenWrt VM Router
+VM-100 `openwrt` is deployed on Tiamat as the future routing/DHCP/DNS control plane.
+
+Current state:
+- VMID: `100`
+- Storage: `local-ssd`
+- WAN NIC: `eth0` on `vmbr0`, DHCP from KVD21/Archer LAN (`192.168.12.x`; currently observed as `192.168.12.145`)
+- LAN NIC: `eth1` on `vmbr1`, static `10.10.0.1/24`
+- LuCI: `http://10.10.0.1/` from Tiamat or any host attached to `vmbr1`
+- SSH: `ssh root@10.10.0.1` from Tiamat
+- Root password: stored on Tiamat at `/root/openwrt-root-password` with mode `0600`
+- Package manager: `apk` on OpenWrt 25.12.2, not `opkg`
+- Proxmox guest agent: enabled and verified with `qm agent 100 ping`
+
+Important limitation: because `vmbr1` is virtual-only, OpenWrt currently serves only virtual clients attached to `vmbr1`. It does not serve phones, Fire TVs, or laptop WiFi yet. Full physical-device DHCP/DNS requires the TP-Link UE300 USB-A gigabit NIC documented in `docs/HARDWARE.md`; that NIC will become a physical OpenWrt LAN bridge (`vmbr2`) connected to the Archer AP/switch.
+
+Management commands from Tiamat:
+```
+qm terminal 100
+ssh root@10.10.0.1
+qm agent 100 ping
+```
+
+Setup script: `proxmox/setup-openwrt-vm.sh` creates `vmbr1`, imports the OpenWrt x86/64 EFI image, configures WAN/LAN assignment, installs LuCI and qemu guest agent, and verifies the VM.
+
 ## Proxmox Bridge
-Proxmox host networking is bridged through `vmbr0` so all CTs/VMs get LAN access.
+Proxmox host networking is bridged through `vmbr0` so all existing CTs/VMs get LAN access. `vmbr1` is a virtual-only internal bridge for the OpenWrt VM LAN; it has no physical port until the TP-Link UE300 USB NIC arrives.
 
 `/etc/network/interfaces`:
 ```
 auto lo
 iface lo inet loopback
 
-auto enp3s0
-iface enp3s0 inet manual
+auto enp4s0
+iface enp4s0 inet manual
 
 auto vmbr0
 iface vmbr0 inet static
     address 192.168.12.242/24
     gateway 192.168.12.1
-    bridge-ports enp3s0
+    bridge-ports enp4s0
     bridge-stp off
     bridge-fd 0
     dns-nameservers 192.168.12.244
+
+auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    bridge-multicast-snooping 0
 ```
 
 ## Core Service Map
@@ -57,7 +89,7 @@ iface vmbr0 inet static
 |---|---|
 | Proxmox UI | `https://192.168.12.242:8006` |
 
-### HABridge — Alexa voice bridge (CT-300, port 80)
+### HABridge — Alexa voice bridge (CT-501, port 80)
 | Service | Port | URL |
 |---|---|---|
 | HABridge web UI + Hue API | 80 | `http://192.168.12.251` / `habridge.tiamat.local` |
@@ -89,6 +121,7 @@ Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwar
 ### VMs (unchanged)
 | VM | Purpose | IP | Notes |
 |---|---|---|---|
+| VM-100 `openwrt` | OpenWrt router/control plane | `10.10.0.1` LAN / `192.168.12.x` WAN | WAN on `vmbr0`, LAN on virtual `vmbr1`, LuCI + qemu-ga enabled |
 | VM-901 `windows-gaming` | Windows 11 gaming | `192.168.12.201` | RX 580 GPU passthrough |
 | VM-990 `haos17-1` | Home Assistant OS | `192.168.12.123` | Smart home hub — ✅ static IP set via `ha network update enp6s18 --ipv4-method static` (permanent, no DHCP needed) |
 
@@ -104,21 +137,44 @@ Vaultwarden backup: `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwar
 
 See `docs/NFS.md` for setup.
 
-## VPN Architecture (kill-switch path)
+## VPN Architecture
 
-CT-101 is not Gluetun software. It runs:
-- `wireguard-tools` client to CT-100
-- `tinyproxy` on port `8888`
+**Active (2026-06-06).** PiVPN + WireGuard on Bahamut. All systems behind VPN.
 
-Traffic flow:
-```
-qBittorrent/Prowlarr -> 192.168.12.101:8888 (TinyProxy)
-                     -> WireGuard tunnel (CT-101 -> CT-100)
-                     -> NAT on CT-100
-                     -> Internet
-```
+Server: Bahamut (`192.168.12.244:51820`), PiVPN, subnet `10.92.29.0/24`.
+IP forwarding + NAT masquerade on Bahamut forwards all client traffic.
 
-If WG tunnel drops, proxy path breaks and downloads fail closed.
+| Client | VPN IP | Config | Boot |
+|---|---|---|---|
+| Laptop | 10.92.29.2 | `/etc/wireguard/wg0.conf` | `systemctl enable wg-quick@wg0` |
+| Tiamat | 10.92.29.3 | `/etc/wireguard/wg0.conf` | `systemctl enable wg-quick@wg0` |
+| OpenWrt VM-100 | 10.92.29.4 | UCI `network.wg0` | persistent (UCI) |
+| CT-300 mediastack | 10.92.29.5 | `/etc/wireguard/wg0.conf` | `systemctl enable wg-quick@wg0` |
+
+All clients use full tunnel (`AllowedIPs = 0.0.0.0/0`) with `Endpoint = 192.168.12.244:51820`.
+DNS through VPN: `10.92.29.1` (Bahamut WG interface → AdGuard Home).
+
+Manage clients: `ssh bahamut "pivpn -l"` / `pivpn add -n <name>` / `pivpn -r <name>`.
+Tray widget on laptop: `~/wireguard-tools/tray-widget/wireguard-tray-widget.py`.
+
+**Old architecture (decommissioned):** CT-100 WG server, CT-101 WG proxy + TinyProxy,
+wg-easy Docker on Bahamut. Preserved in `infrastructure/wireguard-server/` for reference.
+
+### aria2 Fallback Download Path
+
+When Real-Debrid refuses a torrent (DMCA, dead, uncached), aria2 in CT-300
+downloads it directly via BitTorrent through the WireGuard tunnel.
+
+| Component | Location | Port |
+|---|---|---|
+| aria2 daemon | CT-300 | 6800 (JSON-RPC) |
+| riven-aria2-bridge | CT-300 | — (polls Riven API) |
+| AriaNg (optional) | — | — |
+
+Config: `/etc/aria2/aria2.conf`, RPC secret: `mediastack-aria2`.
+Bridge: `/opt/riven-aria2-bridge.py`, polls Riven Failed items every 60s.
+State: `/var/lib/riven-aria2-bridge/state.db`.
+Downloads to: `/data/media/downloads/`, then Jellyfin picks up via library scan.
 
 ## Caddy Reverse Proxy (CT-300)
 All `*.tiamat.local` and `*.mediastack.lan` hostnames are served by Caddy **inside CT-300** at `192.168.12.30:80/443`.
@@ -148,25 +204,35 @@ Also sync to `infrastructure/caddy/Caddyfile` in this repo.
 
 ## DNS / Remote Access on Bahamut
 
-Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi) runs:
-- AdGuard Home (primary DNS, Docker): `:53`, admin UI `:3000` (external `:8081`)
-  - Rewrite: `*.tiamat.local → 192.168.12.30` (CT-300)
-- wg-easy (WireGuard remote VPN): `http://192.168.12.244:51821`
-- WireGuard tunnel endpoint: `:51820/udp`
-- Vaultwarden (native): `https://192.168.12.244` (TLS via DuckDNS caddy)
-- Caddy (Docker): handles `*.lou-fogle-media-stack.duckdns.org` TLS
-  - `vaultwarden.*` → `localhost:8080`
-  - `ha.*` → `192.168.12.123:8123` (Home Assistant VM-990)
-|- `wg.*` → `localhost:51821`
-|- `adguard.*` → `localhost:8081`
+Bahamut (`192.168.12.244`, Raspberry Pi 4, DietPi / Debian 13) is the native
+edge-services node. It uses fish as root's login shell.
 
-> **AdGuard DNS rewrites required for voice control:**
-> Add `habridge.tiamat.local → 192.168.12.30` (CT-300 Caddy) and
-> `ha.tiamat.local → 192.168.12.30` alongside the existing `*.tiamat.local` wildcard.
+Native services:
+- AdGuard Home: DNS `:53`, admin UI `http://192.168.12.244:8081`
+  - Rewrite: `*.tiamat.local → 192.168.12.30` (CT-300 Caddy)
+  - Required explicit rewrites: `habridge.tiamat.local → 192.168.12.30`,
+    `ha.tiamat.local → 192.168.12.30`
+- Caddy + DuckDNS: native `/usr/local/bin/caddy`, systemd `caddy.service`,
+  TLS for `*.lou-fogle-media-stack.duckdns.org`
+  - `vaultwarden.*` → `localhost:8080`
+  - `adguard.*` → `localhost:8081`
+  - `ha.*` → `192.168.12.123:8123` (Home Assistant VM-990)
+- Vaultwarden: native ARM64 binary built on the laptop and deployed to
+  `/usr/local/bin/vaultwarden`, systemd `vaultwarden.service`, data in
+  `/opt/appdata/vaultwarden`
 - DietPi Dashboard: `:5252`
 - TigerVNC: `:5901`
 
-> **Tailscale removed from Bahamut (2026-05-22).** Tailscale now runs inside CT-300 as `tiamat-tailscale` (100.115.82.71).
+- PiVPN + WireGuard: VPN server `:51820/udp`, subnet `10.92.29.0/24`
+  - Clients: laptop, tiamat, openwrt, mediastack (see VPN Architecture)
+
+Removed from active Bahamut architecture:
+- Docker / containerd
+- wg-easy (replaced by native PiVPN)
+- Docker Caddy image
+
+> **Tailscale removed from Bahamut (2026-05-22).** Tailscale now runs inside
+> CT-300 as `tiamat-tailscale` (`100.115.82.71`).
 
 Router DNS recommendation:
 1. `192.168.12.244`
