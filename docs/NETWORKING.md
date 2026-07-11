@@ -172,6 +172,14 @@ LAN clients use `Endpoint = 192.168.12.244:51820`.
 Remote clients use `Endpoint = 74.134.128.100:51820` (Spectrum public IP, port-forwarded on Archer).
 DNS through VPN: `10.92.29.1` (Bahamut WG interface → AdGuard Home).
 
+> **Bahamut throughput ceiling:** The Pi 4's Gigabit Ethernet runs over an internal USB 3.0 bus,
+> limiting real-world throughput to ~500 Mbps down / ~200 Mbps up regardless of ISP or router.
+> Moving Bahamut to the Spectrum subnet would not improve this and would break LAN DNS
+> (`192.168.12.244`) and internal WireGuard endpoints for all clients. Bahamut's workloads
+> (DNS queries + WireGuard handshakes) do not require gigabit throughput.
+> If full-gigabit VPN throughput is ever needed, migrate the WireGuard server to Tiamat
+> (real gigabit NIC, no USB bottleneck) and update all client configs + the Archer port-forward.
+
 Manage clients: `ssh bahamut "pivpn -l"` / `pivpn add -n <name>` / `pivpn -r <name>`.
 Tray widget on laptop: `~/wireguard-tools/tray-widget/wireguard-tray-widget.py`.
 
@@ -315,7 +323,7 @@ Router DNS recommendation:
 
 | MAC               | Last IP        | Vendor                | Status / Notes                                              |
 | ----------------- | -------------- | --------------------- | ----------------------------------------------------------- |
-| 5C:E7:53:45:EA:3E | 192.168.12.140 | Shenzhen Intellirocks | Unknown IoT device — investigate                            |
+| 5C:E7:53:45:EA:3E | 192.168.12.140 | Shenzhen Intellirocks | Unknown IoT device — **Device Isolation applied on Archer** (2026-07-11); retains internet, blocked from LAN |
 | 00:E5:AC:3F:D0:5E | 192.168.12.169 | Unknown OUI           | Stale DHCP lease (hostname: "tiamat"); offline, not in any Proxmox config; investigated 2026-07-11, not a security concern |
 
 > Re-run discovery: `sudo nmap -sn 192.168.12.0/24` from laptop on Stella WiFi (wlp0s20f3).
