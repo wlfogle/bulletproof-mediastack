@@ -3,26 +3,29 @@
 ## LAN Layout
 
 ```
-T-Mobile KVD21 Gateway (192.168.12.1) — DHCP server, CGNAT, locked DNS, no settings
-  └── Archer AX55 Pro (192.168.12.234) — AP mode (WiFi + switch only, no routing)
-        ├── Tiamat (Proxmox VE)       → 192.168.12.242 (static)
-        ├── Bahamut (Raspberry Pi 4)  → 192.168.12.244 (static, DietPi edge node)
-        ├── Laptop                    → 192.168.12.172 (WiFi) / .204 (Ethernet)
-        ├── Fire TV ×2                → DHCP
-        └── Phones ×2                → DHCP
+Spectrum SAX1V1K (192.168.1.1) — WAN: 74.134.128.100 (real public IP), DHCP 192.168.1.x
+  ├── Laptop enp4s0 (direct)         → 192.168.1.188 (wired, DHCP)
+  └── Archer AX55 Pro "Stella" — Router mode (WAN: 192.168.1.61 / LAN: 192.168.12.1)
+        ├── Tiamat (Proxmox VE)      → 192.168.12.242 (static)
+        │     └── UE300 USB NIC → vmbr2 → OpenWrt VM eth2 → br-lan (10.10.0.1/24)
+        ├── Bahamut (Raspberry Pi 4) → 192.168.12.244 (static, DietPi edge node)
+        ├── Laptop wlp0s20f3 (Stella WiFi) → DHCP (192.168.12.x)
+        ├── Fire TV ×2               → DHCP
+        └── Phones ×2               → DHCP
 ```
 
-> **Why AP mode (not Router mode):** The T-Mobile KVD21 gateway blocks internet forwarding
-> when a second router does NAT behind it — even the Archer itself cannot ping 1.1.1.1 in
-> Router mode. The KVD21 admin UI has no configurable settings (DNS, DHCP, port forwarding
-> are all locked). AP mode is the only viable configuration.
+> **ISP migration 2026-07-11:** Switched from T-Mobile KVD21 (CGNAT) to Spectrum gigabit.
+> Spectrum provides a real public IP — port forwarding and external VPN access now work.
+> The Archer AX55 Pro is now in **Router mode** (was AP mode behind T-Mobile).
+> The T-Mobile KVD21 is still physically present and broadcasting `Max-5g` on 192.168.12.x
+> as a separate network — it is no longer the primary ISP.
 
-Archer AP admin: `http://192.168.12.234` (static IP set in AP mode LAN settings)
-KVD21 admin: `http://192.168.12.1` (read-only status only — no configurable settings)
+Archer admin: `http://192.168.12.1` · Spectrum gateway: `http://192.168.1.1`
+See `docs/ARCHER-SETTINGS.md` for optimal Archer configuration.
 
-> **DNS note:** KVD21's DHCP pushes its own DNS (not AdGuard). Set AdGuard DNS manually
-> per-device per `docs/ADGUARD-DEVICE-SETUP.md`. Critical infrastructure (Tiamat, Bahamut,
-> CTs, Home Assistant) already has static DNS pointing to `192.168.12.244`.
+> **DNS note:** Archer DHCP is configured to push `192.168.12.244` (AdGuard on Bahamut)
+> as DNS for all LAN clients. Critical infrastructure (Tiamat, Bahamut, CTs, Home Assistant)
+> has static DNS pointing to `192.168.12.244`. See `docs/ARCHER-SETTINGS.md` for DNS config.
 
 > "Ziggy" is now CT-900 on Tiamat (Open WebUI + SearXNG). The name no
 > longer refers to a Raspberry Pi.
