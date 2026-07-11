@@ -46,7 +46,7 @@ bash scripts/install-unified-guide.sh
 The script is idempotent. It always:
 1. Self-tests (`bash -n`, `shellcheck`).
 2. Preflight (Tiamat reachable, CT-300 running, Jellyfin :8096 listening).
-3. **Discovers** the TMDB API key from CT-242 Jellyseerr's `settings.json` (will start CT-242 if needed). Discovers the Jellyfin token from CT-300's existing `/etc/jellyfin-autoscan.env`. Riven public URL is constant (`https://riven.mediastack.lan`).
+3. **Discovers** the TMDB API key from the n8n Variables table in CT-300 (CT-242 Jellyseerr is decommissioned — key was migrated to CT-300). Discovers the Jellyfin token from CT-300's existing `/etc/jellyfin-autoscan.env`. Riven public URL is constant (`https://riven.mediastack.lan`).
 4. Pushes `services/unified-guide/` and `services/yttv-scraper/` into CT-300 via tar+pct push.
 5. Writes `/etc/unified-guide/env` (mode 0600) — preserved across re-runs.
 6. Generates `yttv-scraper.{service,timer}` inline.

@@ -12,7 +12,7 @@ This repo provides the first complete NexusOS service module:
 
 ## What is current
 - CT-300 is the consolidated native media-stack container.
-- VM-100 OpenWrt is working as a virtual router on `vmbr1`; physical LAN control waits for the UE300 USB NIC.
+- VM-100 OpenWrt is working as a virtual router; UE300 USB NIC installed 2026-07-11, vmbr2 operational — br-lan now bridges both eth1 (vmbr1) and eth2 (vmbr2/UE300). Archer still handles DHCP; disable Archer DHCP to hand full control to OpenWrt.
 - Bahamut is native, not Docker-first.
 - WireGuard, wg-easy, CT-100, CT-101, Traefik, Authentik, zurg, and rclone are not active architecture.
 
