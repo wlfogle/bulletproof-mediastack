@@ -43,7 +43,9 @@ Current state:
 - Package manager: `apk` on OpenWrt 25.12.2, not `opkg`
 - Proxmox guest agent: enabled and verified with `qm agent 100 ping`
 
-Important limitation: because `vmbr1` is virtual-only, OpenWrt currently serves only virtual clients attached to `vmbr1`. It does not serve phones, Fire TVs, or laptop WiFi yet. Full physical-device DHCP/DNS requires the TP-Link UE300 USB-A gigabit NIC documented in `docs/HARDWARE.md`; that NIC will become a physical OpenWrt LAN bridge (`vmbr2`) connected to the Archer AP/switch.
+**2026-07-11: UE300 installed and vmbr2 operational.** OpenWrt LAN bridge (`br-lan`) now includes both `eth1` (vmbr1, virtual) and `eth2` (vmbr2, physical UE300 USB NIC at `enx00e04c3f4188`). The UE300 RJ45 connects to the Archer switch, allowing OpenWrt to serve physical clients.
+
+To disable the Archer's DHCP and let OpenWrt take over fully, set Archer DHCP pool to disabled via `http://192.168.12.1`.
 
 Management commands from Tiamat:
 
