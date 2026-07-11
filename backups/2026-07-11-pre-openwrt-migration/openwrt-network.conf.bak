@@ -1,0 +1,45 @@
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	list ipaddr '127.0.0.1/8'
+
+config globals 'globals'
+	option ula_prefix 'fd7f:f3ed:d3aa::/48'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+	option ports 'eth1 eth2'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	list ipaddr '10.10.0.1/24'
+	option ip6assign '60'
+
+config interface 'wan'
+	option device 'eth0'
+	option proto 'dhcp'
+
+config interface 'wan6'
+	option device 'eth0'
+	option proto 'dhcpv6'
+
+config interface 'wg0'
+	option proto 'wireguard'
+	option private_key 'CP85SH02FvIPrJjXn1hx4evFNoyiX5NQVMCUVNmPK3c='
+	list addresses '10.92.29.4/24'
+	option dns '10.92.29.1'
+	option mtu '1420'
+
+config wireguard_wg0 'wgpeer'
+	option public_key 'IoZmVIQNjE+y80ZfcEWEtxP5zck5brlvABbiuyevo04='
+	option preshared_key '92tLfTo1a+OyFNn2qadjt1MC8I39R6viZ8FECxaAdnI='
+	option endpoint_host '192.168.12.244'
+	option endpoint_port '51820'
+	option persistent_keepalive '25'
+	list allowed_ips '0.0.0.0/0'
+	list allowed_ips '::/0'
+	option route_allowed_ips '1'
+

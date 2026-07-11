@@ -1,0 +1,109 @@
+# ── Global: Multiplexing + Compression + Agent Forwarding ──
+Host *
+    ControlMaster auto
+    ControlPath ~/.ssh/sockets/%r@%h-%p
+    ControlPersist 10m
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    IdentityFile ~/.ssh/id_ed25519
+    Compression yes
+    ForwardAgent yes
+
+# ── Homelab: LAN Access ──
+# Subnet 192.168.12.0/24 is behind Archer AX55 Pro (Stella)
+# Routed automatically via wlp0s20f3 (192.168.12.172)
+
+Host tiamat
+    HostName 192.168.12.242
+    User root
+
+Host bahamut
+    HostName 192.168.12.244
+    User root
+
+Host archer
+    HostName 192.168.12.1
+    User root
+
+# ── Homelab: Tailscale Access (away from LAN) ──
+
+Host tiamat-ts
+    HostName tiamat-tailscale
+    User root
+
+Host bahamut-ts
+    HostName bahamut
+    User root
+
+# Remote access: hop through Bahamut WireGuard → Tiamat
+Host tiamat-remote
+    HostName 192.168.12.242
+    User root
+    ProxyJump bahamut-ts
+
+# ── Tiamat Containers ──
+
+Host ct-wg
+    HostName 192.168.12.100
+    User root
+    ProxyJump tiamat
+
+Host ct-proxy
+    HostName 192.168.12.101
+    User root
+    ProxyJump tiamat
+
+Host ct-flaresolverr
+    HostName 192.168.12.102
+    User root
+    ProxyJump tiamat
+
+Host ct-prowlarr
+    HostName 192.168.12.210
+    User root
+    ProxyJump tiamat
+
+Host ct-qbit
+    HostName 192.168.12.212
+    User root
+    ProxyJump tiamat
+
+Host ct-sonarr
+    HostName 192.168.12.214
+    User root
+    ProxyJump tiamat
+
+Host ct-radarr
+    HostName 192.168.12.215
+    User root
+    ProxyJump tiamat
+
+Host ct-plex
+    HostName 192.168.12.230
+    User root
+    ProxyJump tiamat
+
+Host ct-jellyfin
+    HostName 192.168.12.231
+    User root
+    ProxyJump tiamat
+
+Host ct-300 ct-mediastack mediastack
+    HostName 192.168.12.30
+    User root
+
+Host ct-501 habridge
+    HostName 192.168.12.251
+    User root
+    ProxyJump tiamat
+
+Host openwrt vm-100
+    HostName 10.10.0.1
+    User root
+    IdentityFile ~/.ssh/id_ed25519
+    ProxyJump tiamat
+
+Host winvm win11vm
+    HostName 192.168.12.200
+    User lou
+    IdentityFile ~/.ssh/id_ed25519

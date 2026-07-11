@@ -1,0 +1,74 @@
+auto lo
+iface lo inet loopback
+
+iface enp4s0 inet manual
+
+auto vmbr0
+iface vmbr0 inet static
+	address 192.168.12.242/24
+	gateway 192.168.12.1
+	bridge-ports enp4s0
+	bridge-stp off
+	bridge-fd 0
+	bridge-multicast-snooping 0
+	dns-nameservers 192.168.12.244 1.1.1.1
+
+iface wlp6s0 inet manual
+
+
+source /etc/network/interfaces.d/*
+
+post-up ip neigh replace 192.168.12.225 dev vmbr0 lladdr BC:24:11:2A:83:BB nud permanent
+post-up ip neigh replace 192.168.12.230 dev vmbr0 lladdr BC:24:11:E4:51:2C nud permanent
+
+# Static ARP — all critical CTs, auto-set on every vmbr0 up
+	post-up ip neigh replace 192.168.12.100 dev vmbr0 lladdr BC:24:11:C1:B5:F4 nud permanent
+	post-up ip neigh replace 192.168.12.101 dev vmbr0 lladdr BC:24:11:C3:34:8B nud permanent
+	post-up ip neigh replace 192.168.12.102 dev vmbr0 lladdr BC:24:11:B9:57:14 nud permanent
+	post-up ip neigh replace 192.168.12.103 dev vmbr0 lladdr BC:24:11:D8:4A:7F nud permanent
+	post-up ip neigh replace 192.168.12.104 dev vmbr0 lladdr BC:24:11:93:4D:63 nud permanent
+	post-up ip neigh replace 192.168.12.105 dev vmbr0 lladdr BC:24:11:56:63:82 nud permanent
+	post-up ip neigh replace 192.168.12.106 dev vmbr0 lladdr BC:24:11:4C:A3:AF nud permanent
+	post-up ip neigh replace 192.168.12.107 dev vmbr0 lladdr BC:24:11:D8:55:A8 nud permanent
+	post-up ip neigh replace 192.168.12.210 dev vmbr0 lladdr BC:24:11:56:9F:78 nud permanent
+	post-up ip neigh replace 192.168.12.212 dev vmbr0 lladdr BC:24:11:96:06:E2 nud permanent
+	post-up ip neigh replace 192.168.12.214 dev vmbr0 lladdr BC:24:11:94:D9:FE nud permanent
+	post-up ip neigh replace 192.168.12.225 dev vmbr0 lladdr BC:24:11:2A:83:BB nud permanent
+	post-up ip neigh replace 192.168.12.217 dev vmbr0 lladdr BC:24:11:F7:6F:18 nud permanent
+	post-up ip neigh replace 192.168.12.218 dev vmbr0 lladdr BC:24:11:DE:FD:A9 nud permanent
+	post-up ip neigh replace 192.168.12.230 dev vmbr0 lladdr BC:24:11:CE:A1:AA nud permanent
+	post-up ip neigh replace 192.168.12.231 dev vmbr0 lladdr BC:24:11:2A:08:31 nud permanent
+	post-up ip neigh replace 192.168.12.232 dev vmbr0 lladdr BC:24:11:D9:20:90 nud permanent
+	post-up ip neigh replace 192.168.12.233 dev vmbr0 lladdr BC:24:11:8B:0F:33 nud permanent
+	post-up ip neigh replace 192.168.12.151 dev vmbr0 lladdr BC:24:11:B3:6D:FF nud permanent
+	post-up ip neigh replace 192.168.12.211 dev vmbr0 lladdr BC:24:11:C7:50:B0 nud permanent
+	post-up ip neigh replace 192.168.12.213 dev vmbr0 lladdr BC:24:11:6C:B3:95 nud permanent
+	post-up ip neigh replace 192.168.12.188 dev vmbr0 lladdr BC:24:11:E1:A9:20 nud permanent
+	post-up ip neigh replace 192.168.12.169 dev vmbr0 lladdr BC:24:11:18:FC:DF nud permanent
+	post-up ip neigh replace 192.168.12.216 dev vmbr0 lladdr BC:24:11:16:91:AE nud permanent
+	post-up ip neigh replace 192.168.12.241 dev vmbr0 lladdr BC:24:11:66:77:A9 nud permanent
+	post-up ip neigh replace 192.168.12.132 dev vmbr0 lladdr BC:24:11:73:99:1D nud permanent
+	post-up ip neigh replace 192.168.12.141 dev vmbr0 lladdr BC:24:11:1C:CC:1C nud permanent
+	post-up ip neigh replace 192.168.12.180 dev vmbr0 lladdr BC:24:11:23:B7:D3 nud permanent
+	post-up ip neigh replace 192.168.12.220 dev vmbr0 lladdr BC:24:11:48:32:E3 nud permanent
+	post-up ip neigh replace 192.168.12.170 dev vmbr0 lladdr BC:24:11:49:D9:8B nud permanent
+	post-up ip neigh replace 192.168.12.221 dev vmbr0 lladdr BC:24:11:53:62:17 nud permanent
+	post-up ip neigh replace 192.168.12.224 dev vmbr0 lladdr BC:24:11:F4:22:CF nud permanent
+
+auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    bridge-multicast-snooping 0
+	dns-nameservers 192.168.12.244 1.1.1.1
+    # OpenWrt VM internal LAN — no physical port, virtual only
+    # CTs/VMs on this bridge get DHCP from OpenWrt (10.10.0.0/24)
+
+auto vmbr2
+iface vmbr2 inet manual
+    bridge-ports enx00e04c3f4188
+    bridge-stp off
+    bridge-fd 0
+    bridge-multicast-snooping 0
+    # UE300 USB NIC -- physical OpenWrt LAN bridge to Archer switch

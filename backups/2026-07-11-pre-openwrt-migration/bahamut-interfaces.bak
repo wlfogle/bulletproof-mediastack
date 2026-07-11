@@ -1,0 +1,25 @@
+# Location: /etc/network/interfaces
+# Please modify network settings via: dietpi-config
+# Or create your own drop-ins in: /etc/network/interfaces.d/
+
+# Drop-in configs
+source interfaces.d/*
+
+# Ethernet (primary)
+auto eth0
+iface eth0 inet static
+address 192.168.12.244
+netmask 255.255.255.0
+gateway 192.168.12.1
+dns-nameservers 9.9.9.9 149.112.112.112
+
+# WiFi (fallback when Ethernet unplugged)
+allow-hotplug wlan0
+iface wlan0 inet static
+address 192.168.12.245
+netmask 255.255.255.0
+gateway 192.168.12.1
+dns-nameservers 9.9.9.9
+wireless-power off
+wpa-conf /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+metric 200
