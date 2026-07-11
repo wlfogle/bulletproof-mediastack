@@ -174,7 +174,7 @@ Get-DnsClientServerAddress -AddressFamily IPv4
 Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ResetServerAddresses
 
 # Or set statically if preferred:
-Set-DnsClientServerAddress -InterfaceAlias "Ethernet" \
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" `
   -ServerAddresses ("192.168.12.244","1.1.1.1")
 
 # Flush DNS cache:
