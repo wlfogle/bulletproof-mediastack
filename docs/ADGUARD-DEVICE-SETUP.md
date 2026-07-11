@@ -6,11 +6,14 @@ AdGuard Home is already running on Bahamut (`192.168.12.244`). This guide covers
 
 ---
 
-## Step 1 — Router ⚠️ NOT POSSIBLE WITH KVD21
+## Step 1 — Router ✅ DONE (Archer AX55 Pro)
 
-The T-Mobile KVD21 gateway (`http://192.168.12.1`) has **no configurable settings** —
-DHCP DNS is locked and cannot be changed via the app or web UI.
-Per-device DNS configuration (Steps 2–6 below) is the only option.
+Since the 2026-07-11 Spectrum migration the Archer AX55 Pro (`http://192.168.12.1`) is in
+**Router mode** and DHCP is configured to push `192.168.12.244` as DNS to all clients.
+All DHCP devices (Fire TVs, phones, laptop WiFi) automatically receive AdGuard DNS — no
+per-device configuration needed for those clients.
+
+Static-IP hosts (Tiamat, Bahamut, CTs, VMs) still require explicit DNS config per the steps below.
 
 ---
 
@@ -42,9 +45,16 @@ Same pattern as the static IP documented in `docs/NETWORKING.md`.
 
 ---
 
-## Step 5 — VM-901 (Windows Gaming, 192.168.12.201)
+## Step 5 — VM-101 win11vm (Windows 11 Gaming, DHCP)
+
+VM-101 gets its IP via DHCP from the Archer, so it already receives `192.168.12.244` as DNS
+automatically (Step 1). If DNS was previously set statically inside Windows, clear it:
 
 Windows Settings → Network → Ethernet/WiFi adapter → IPv4 Properties → DNS:
+
+- Set both fields to **Obtain DNS server address automatically**
+
+Or to keep it static:
 
 - **Preferred:** `192.168.12.244`
 - **Alternate:** `1.1.1.1`
@@ -83,10 +93,14 @@ dig +short jellyfin.tiamat.local
 The wildcard rewrite `*.tiamat.local → 192.168.12.30` in AdGuard is the key dependency for all Caddy-served local hostnames. Once all devices use AdGuard DNS, those hostnames resolve everywhere on the LAN automatically.
 
 
-## Future OpenWrt/UE300 path
+## OpenWrt/UE300 — Current State (2026-07-11)
 
-When the TP-Link UE300 is plugged into Tiamat and passed through/bridged to
-VM-100, OpenWrt becomes the DHCP/DNS control plane for physical devices. At
-that point this per-device guide becomes fallback-only: OpenWrt DHCP should
-hand out `192.168.12.244` as DNS to phones, Fire TVs, laptops, CTs, and VMs,
-and firewall rules can prevent clients from bypassing AdGuard.
+The TP-Link UE300 is installed and `vmbr2` is operational. OpenWrt VM-100's `br-lan`
+now includes `eth2` (vmbr2/UE300), whose RJ45 connects to the Archer switch.
+
+The Archer currently handles DHCP/DNS for the `192.168.12.0/24` LAN and pushes
+`192.168.12.244` to all clients. To hand full DHCP/DNS control to OpenWrt instead,
+disable the Archer's DHCP pool at `http://192.168.12.1` and configure OpenWrt to
+serve `192.168.12.244` as DNS in its DHCP options. At that point this per-device
+guide becomes fallback-only, and firewall rules on OpenWrt can prevent clients from
+bypassing AdGuard.
