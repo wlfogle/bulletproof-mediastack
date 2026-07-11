@@ -162,7 +162,9 @@ IP forwarding + NAT masquerade on Bahamut forwards all client traffic.
 | OpenWrt VM-100    | 10.92.29.4 | UCI `network.wg0`         | persistent (UCI)                |
 | CT-300 mediastack | 10.92.29.5 | `/etc/wireguard/wg0.conf` | `systemctl enable wg-quick@wg0` |
 
-All clients use full tunnel (`AllowedIPs = 0.0.0.0/0`) with `Endpoint = 192.168.12.244:51820`.
+All clients use full tunnel (`AllowedIPs = 0.0.0.0/0`).
+LAN clients use `Endpoint = 192.168.12.244:51820`.
+Remote clients use `Endpoint = 74.134.128.100:51820` (Spectrum public IP, port-forwarded on Archer).
 DNS through VPN: `10.92.29.1` (Bahamut WG interface → AdGuard Home).
 
 Manage clients: `ssh bahamut "pivpn -l"` / `pivpn add -n <name>` / `pivpn -r <name>`.
@@ -269,38 +271,38 @@ Router DNS recommendation:
 
 ### Infrastructure (static)
 
-| IP | Device | MAC | Notes |
-| --- | --- | --- | --- |
-| 192.168.12.1 | T-Mobile KVD21 gateway | C8:99:B2:E1:82:C9 | ISP gateway, locked |
-| 192.168.12.234 | TP-Link Archer AX55 Pro | 24:2F:D0:28:E0:05 | AP mode |
-| 192.168.12.242 | Tiamat (Proxmox host) | B4:2E:99:AA:CF:06 | Gigabyte; file-share hub |
-| 192.168.12.244 | Bahamut (Pi 4, eth0) | 88:A2:9E:85:CD:E6 | AdGuard DNS |
-| 192.168.12.245 | Bahamut (Pi 4, wlan0) | 88:A2:9E:85:CD:E7 | secondary iface |
-| 192.168.12.30 | CT-300 mediastack | BC:24:11:E3:7C:DB | Jellyfin/Riven/n8n |
-| 192.168.12.123 | VM-990 Home Assistant OS | 02:88:F9:77:28:E2 | |
-| 192.168.12.145 | VM-100 OpenWrt | BC:24:11:BB:18:00 | |
-| 192.168.12.251 | CT-501 HABridge | BC:24:11:AB:A3:2D | |
-| 192.168.12.172 | Laptop (Pop!_OS, WiFi) | — | pop-os.lan |
-| 192.168.12.204 | Laptop (Pop!_OS, Ethernet) | — | control center |
-| 192.168.12.215 | HDHomeRun tuner | 00:18:DD:04:8E:EE | HDHR-1048EEE4 |
-| 192.168.12.198 | Epson printer | 68:55:D4:34:0E:C8 | EPSON340EC8 |
+| IP             | Device                     | MAC               | Notes                    |
+| -------------- | -------------------------- | ----------------- | ------------------------ |
+| 192.168.12.1   | T-Mobile KVD21 gateway     | C8:99:B2:E1:82:C9 | ISP gateway, locked      |
+| 192.168.12.234 | TP-Link Archer AX55 Pro    | 24:2F:D0:28:E0:05 | AP mode                  |
+| 192.168.12.242 | Tiamat (Proxmox host)      | B4:2E:99:AA:CF:06 | Gigabyte; file-share hub |
+| 192.168.12.244 | Bahamut (Pi 4, eth0)       | 88:A2:9E:85:CD:E6 | AdGuard DNS              |
+| 192.168.12.245 | Bahamut (Pi 4, wlan0)      | 88:A2:9E:85:CD:E7 | secondary iface          |
+| 192.168.12.30  | CT-300 mediastack          | BC:24:11:E3:7C:DB | Jellyfin/Riven/n8n       |
+| 192.168.12.123 | VM-990 Home Assistant OS   | 02:88:F9:77:28:E2 |                          |
+| 192.168.12.145 | VM-100 OpenWrt             | BC:24:11:BB:18:00 |                          |
+| 192.168.12.251 | CT-501 HABridge            | BC:24:11:AB:A3:2D |                          |
+| 192.168.12.172 | Laptop (Pop!_OS, WiFi)     | —                 | pop-os.lan               |
+| 192.168.12.204 | Laptop (Pop!_OS, Ethernet) | —                 | control center           |
+| 192.168.12.215 | HDHomeRun tuner            | 00:18:DD:04:8E:EE | HDHR-1048EEE4            |
+| 192.168.12.198 | Epson printer              | 68:55:D4:34:0E:C8 | EPSON340EC8              |
 
 ### Endpoints (DHCP)
 
-| IP | Device | MAC | Notes |
-| --- | --- | --- | --- |
-| 192.168.12.112 | Fire TV — living room | 78:A0:3F:2D:B9:E0 | |
-| 192.168.12.188 | Fire TV — bedroom | D8:E7:43:20:7C:64 | |
-| 192.168.12.222 | Echo Show | A4:08:01:0A:2B:99 | Amazon; which Echo is .222 vs .100 to confirm |
-| 192.168.12.100 | Echo — bedside | 0C:DC:91:35:33:8B | Amazon |
-| 192.168.12.177 | Galaxy Note 20 (phone) | — | offline at scan |
-| 192.168.12.120 | Android tablet | — | offline at scan |
-| (DHCP, TBD) | Galaxy S10 (2nd phone) | — | offline at scan |
+| IP             | Device                 | MAC               | Notes                                         |
+| -------------- | ---------------------- | ----------------- | --------------------------------------------- |
+| 192.168.12.112 | Fire TV — living room  | 78:A0:3F:2D:B9:E0 |                                               |
+| 192.168.12.188 | Fire TV — bedroom      | D8:E7:43:20:7C:64 |                                               |
+| 192.168.12.222 | Echo Show              | A4:08:01:0A:2B:99 | Amazon; which Echo is .222 vs .100 to confirm |
+| 192.168.12.100 | Echo — bedside         | 0C:DC:91:35:33:8B | Amazon                                        |
+| 192.168.12.177 | Galaxy Note 20 (phone) | —                 | offline at scan                               |
+| 192.168.12.120 | Android tablet         | —                 | offline at scan                               |
+| (DHCP, TBD)    | Galaxy S10 (2nd phone) | —                 | offline at scan                               |
 
 ### Unidentified (investigate)
 
-| IP | MAC | Vendor | Notes |
-| --- | --- | --- | --- |
+| IP             | MAC               | Vendor                | Notes                         |
+| -------------- | ----------------- | --------------------- | ----------------------------- |
 | 192.168.12.140 | 5C:E7:53:45:EA:3E | Shenzhen Intellirocks | unknown IoT/smart-home device |
 
 > Re-run discovery any time: `sudo nmap -sn 192.168.12.0/24` from the laptop;
