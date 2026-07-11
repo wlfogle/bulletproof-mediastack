@@ -104,18 +104,21 @@ pct exec <CT> -- bash -c "systemctl stop <service>; \
 
 ## Bahamut — Raspberry Pi 4B 2GB (192.168.12.244)
 
+> **Updated 2026-07-11:** Docker, wg-easy, and Tailscale have been removed from Bahamut.
+> Current native services: AdGuard Home, PiVPN/WireGuard, Vaultwarden, Caddy+DuckDNS.
+> Tailscale now runs inside CT-300 (`tiamat-tailscale`, `100.115.82.71`).
+
 ### Role
 - AdGuard Home (network-wide DNS + ad-blocking)
-- wg-easy (remote VPN access)
-- Vaultwarden (password manager) + Caddy (TLS)
-- Tailscale mesh VPN
+- PiVPN + WireGuard (VPN server, port 51820)
+- Vaultwarden (password manager, native ARM64 binary) + Caddy (TLS)
+- DuckDNS via Caddy (`*.lou-fogle-media-stack.duckdns.org`)
 
 ### Memory Optimizations (applied 2026-04-10)
 - **Swap**: Increased from 153MB to 1GB (`/var/swap`)
 - **zram**: 512MB with lz4 compression at priority 100 (persistent via `zram-swap.service`)
 - **GPU memory**: Reduced from 64MB to 16MB (headless, takes effect after reboot)
-- **Docker memory limits**: Set in `/opt/docker-compose.yml` (requires cgroup memory, pending reboot)
-  - AdGuard: 256MB, wg-easy: 128MB, Vaultwarden: 128MB, Caddy: 64MB
+- Docker removed — memory limits no longer applicable
 
 ### Network Fix
 - **Disabled wlan0**: Both eth0 (192.168.12.244) and wlan0 (192.168.12.245) were on the same subnet causing routing flaps. Wi-Fi disabled via `dtoverlay=disable-wifi` in boot config.

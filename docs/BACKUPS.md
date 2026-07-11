@@ -1,15 +1,28 @@
 # Backups
+
+> **Updated 2026-07-11:** Architecture consolidated to CT-300 + CT-501. All old per-service
+> CTs (100–279, 900) are decommissioned. Backup targets and scripts below reflect current state.
+
 ## Current State
 `scripts/backup.sh` runs daily at **03:00** via `/etc/cron.d/vzdump` on Tiamat.
 
 What it does:
-1. **vzdump snapshot** of all 17 running containers → `/mnt/hdd/backups/lxc/` (zstd compressed)
-2. **Jellyseerr config pull** from CT-242 Docker volume → `/mnt/hdd/backups/appdata/jellyseerr-config-DATE.tar.gz`
-3. **appdata tar** of `/opt/appdata/` (host-side container configs) → `/mnt/hdd/backups/appdata/appdata-DATE.tar.gz`
+1. **vzdump snapshot** of active CTs/VMs → `/mnt/hdd/backups/lxc/` (zstd compressed)
+2. **appdata tar** of CT-300 `/opt/appdata/` → `/mnt/hdd/backups/appdata/appdata-DATE.tar.gz`
+3. **Vaultwarden backup** already at `/var/backup/mediastack/vaultwarden_pg_dump.sql` + `vaultwarden_data.tgz` in CT-300
 4. **Rotation** — keeps 7 days of each
 
-Containers backed up: 100, 101, 102, 103, 104, 105, 106, 107, 210, 212, 214, 215, 230, 231, 240, 242, 900
-(VMs excluded — too large for nightly; vzdump those manually before major changes)
+Current backup targets:
+
+| VMID | Name | Priority | Notes |
+|---|---|---|---|
+| CT-300 | mediastack | **Critical** | Jellyfin, Riven, n8n, Caddy, Postgres, Redis, Vaultwarden |
+| CT-501 | habridge | High | Alexa/Hue voice bridge |
+| VM-990 | haos | High | Home Assistant OS — backup before HA upgrades |
+| VM-100 | openwrt | Medium | OpenWrt config — backup before network changes |
+| VM-101 | win11vm | Low | Large disk; vzdump manually before major changes |
+
+(VMs excluded from nightly by default — too large; vzdump manually before major changes)
 
 Log: `/var/log/homelab-backup.log`
 
@@ -37,8 +50,10 @@ Vzdump restore (from Proxmox UI or CLI):
 ```bash
 # List available backups
 ls /mnt/hdd/backups/lxc/
-# Restore a container
-qmrestore /mnt/hdd/backups/lxc/vzdump-lxc-242-*.tar.zst 242 --storage local-lvm
+# Restore CT-300
+pct restore 300 /mnt/hdd/backups/lxc/vzdump-lxc-300-*.tar.zst --storage hdd-ct
+# Restore VM-990 Home Assistant
+qmrestore /mnt/hdd/backups/lxc/vzdump-qemu-990-*.vma.zst 990 --storage local-lvm
 ```
 Restic restore (once deployed):
 ```bash
