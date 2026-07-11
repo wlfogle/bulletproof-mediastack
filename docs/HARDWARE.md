@@ -23,13 +23,13 @@
 ## Recommended Upgrades
 
 1. **RAM** ✅ UPGRADED: 32GB DDR4-3200 (was 8GB, upgraded 2026-03-26)
-   - VM-901 can now run alongside the full media stack
+   - VM-101 (win11vm) can now run alongside the full media stack
    - FlareSolverr Cloudflare solving now possible (Chrome headless needs ~2GB)
    - B450M DS3H supports up to 128GB across 4 slots (2 slots used)
 2. **OS**: Migrated to Proxmox VE ✅
-3. **Storage**: 2TB WD HDD in use for media. 240GB WD SSD (sdb) passed through to VM-901 for games.
+3. **Storage**: 2TB WD HDD in use for media. 240GB WD SSD (sdb) passed through to VM-101 (win11vm) for games.
 4. **Network**: Use wired Ethernet — avoid Wi-Fi for streaming stability
-5. **USB NIC** ⏳ PENDING: TP-Link UE300 (USB-A 3.0, RTL8153 chipset, ~$12) — needed to extend OpenWrt VM LAN to physical devices (phones, Fire TVs, laptop). Plug into any USB-A port (rear or top panel). Will become `vmbr2` bridge → OpenWrt LAN NIC → Archer AP switch → all physical devices get DHCP/DNS from OpenWrt+AdGuard. Until it arrives, OpenWrt serves CTs/VMs only.
+5. **USB NIC** ✅ DONE (2026-07-11): TP-Link UE300 installed — vmbr2 operational, br-lan on OpenWrt bridges eth1 (vmbr1) + eth2 (vmbr2/UE300). Archer still handles DHCP; disable Archer DHCP pool to hand full control to OpenWrt.
 
 ## GPU Passthrough Status
 
@@ -43,22 +43,22 @@ RX 580 (XFX) is **fully configured for VFIO passthrough** — no setup needed:
 
 > With GPU passed through, Proxmox host is **headless** — manage via web UI or SSH only.
 
-### GPU Assignment — VM-900 (Windows Gaming VM)
+### GPU Assignment — VM-101 win11vm (Windows Gaming VM)
 
-As of 2026-05-29 the RX 580 is dedicated to **VM-900** (Windows gaming VM):
+As of 2026-05-29 the RX 580 is dedicated to **VM-101** (`win11vm`):
 
 - `/dev/dri` device passthrough **removed** from CT-300 LXC config (`/etc/pve/lxc/300.conf`)
 - Jellyfin (CT-300) switched to **software decoding/encoding** — `HardwareAccelerationType=none`, `EnableHardwareEncoding=false`, `HardwareDecodingCodecs` cleared (`/etc/jellyfin/encoding.xml`)
-- GPU is now free for exclusive VFIO passthrough to VM-900
+- GPU is now free for exclusive VFIO passthrough to VM-101
 
-To attach the GPU to VM-900 via Proxmox web UI: Hardware → Add → PCI Device → select `09:00.0` (and `09:00.1` for HDMI audio) with PCIe enabled.
+To attach the GPU to VM-101 via Proxmox web UI: Hardware → Add → PCI Device → select `09:00.0` (and `09:00.1` for HDMI audio) with PCIe enabled.
 
 ## Storage on Tiamat
 
 | Device                    | Size  | Use                                                                                         |
 | ------------------------- | ----- | ------------------------------------------------------------------------------------------- |
 | sda (ST2000DM008 HDD)     | 1.8TB | Proxmox LVM: root (96GB), media-hdd (1.5TB), all CT/VM disks                                |
-| sdb (WDC WDS240G2G0A SSD) | 223GB | Passed through to VM-901 (Windows games storage); contains existing Windows install on sdb4 |
+| sdb (WDC WDS240G2G0A SSD) | 223GB | Passed through to VM-101 win11vm (Windows games storage); contains existing Windows install on sdb4 |
 
 ## Bahamut (Raspberry Pi 4, DietPi)
 

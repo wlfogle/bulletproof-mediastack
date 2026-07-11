@@ -75,8 +75,8 @@
 | CT/VM | Service | URL | User | Pass | Status |
 |---|---|---|---|---|---|
 | CT-501 | HABridge | http://192.168.12.251/ | — | — | ✅ active Alexa/Hue bridge |
-| VM-100 | OpenWrt router/control plane | http://10.10.0.1/ | `root` | Tiamat:`/root/openwrt-root-password` | ✅ active virtual router, physical LAN pending UE300 |
-| VM-900/901 | Windows gaming | Proxmox console | Windows local | — | ✅ gaming-only VM; do not add WSL/toolchains unless explicitly needed |
+| VM-100 | OpenWrt router/control plane | http://10.10.0.1/ | `root` | Tiamat:`/root/openwrt-root-password` | ✅ active virtual router, UE300 installed 2026-07-11, vmbr2 operational |
+| VM-101 | Windows gaming (win11vm) | Proxmox console | Windows local | — | ✅ gaming-only VM; do not add WSL/toolchains unless explicitly needed |
 | VM-990 | Home Assistant OS | http://192.168.12.123:8123/ | `haos` | `haos` | ✅ static IP confirmed by qemu guest agent |
 | VM-990 | HAOS SSH add-on | port 22222 | `root` | `homeassist` | ✅ |
 
@@ -116,7 +116,7 @@ Removed from Bahamut: Docker, containerd, wg-easy, and WireGuard.
 | MyJDownloader email + password | CT-300:`/etc/riven-jd2-bridge.env` | bridge uses MyJD REST + JD2 uses for device pairing |
 | MyJDownloader device name | `mediastack-jd2` (set in env file) | shown on https://my.jdownloader.org once JD2 connects |
 | MetaTube backend token | CT-300:`/etc/metatube.env` (`METATUBE_TOKEN=^9NR9[tq03Nwl#3)`) | Jellyfin MetaTube plugin authenticates with this when calling `127.0.0.1:32217/v1/*` |
-| Unified Guide TMDB key | CT-300:`/etc/unified-guide/env` (`UG_TMDB_API_KEY`) | discovered from CT-242 Jellyseerr `settings.json`; auto-populated by `install-unified-guide.sh` |
+|| Unified Guide TMDB key | CT-300:`/etc/unified-guide/env` (`UG_TMDB_API_KEY`) | from n8n Variables table in CT-300 (CT-242 decommissioned; key migrated); auto-populated by `install-unified-guide.sh` |
 | Unified Guide Jellyfin token | CT-300:`/etc/unified-guide/env` (`UG_JELLYFIN_TOKEN`) | extracted from `/etc/jellyfin-autoscan.env`; library lane on the guide |
 | Homarr DB encryption key | CT-300:`/opt/homarr.env` (`SECRET_ENCRYPTION_KEY`, 32-byte hex, auto-generated) | encrypts saved integration creds in Homarr's SQLite DB |
 
