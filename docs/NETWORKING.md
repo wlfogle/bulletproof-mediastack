@@ -20,8 +20,12 @@ Spectrum SAX1V1K (192.168.1.1) — WAN: 74.134.128.100 (real public IP), DHCP 19
 > The T-Mobile KVD21 is still physically present and broadcasting `Max-5g` on 192.168.12.x
 > as a separate network — it is no longer the primary ISP.
 
-Archer admin: `http://192.168.12.1` · Spectrum gateway: `http://192.168.1.1`
+Archer admin: `http://192.168.12.254` · Spectrum gateway: `http://192.168.1.1`
 See `docs/ARCHER-SETTINGS.md` for optimal Archer configuration.
+
+> **2026-07-12:** Archer LAN IP changed to `192.168.12.254` (was `192.168.12.1`) during
+> OpenWrt migration attempt. DHCP still enabled on Archer (range 192.168.12.100-200,
+> gateway 192.168.12.254). Tiamat and Bahamut gateways updated to `192.168.12.254`.
 
 > **DNS note:** Archer DHCP is configured to push `192.168.12.244` (AdGuard on Bahamut)
 > as DNS for all LAN clients. Critical infrastructure (Tiamat, Bahamut, CTs, Home Assistant)
@@ -284,9 +288,9 @@ Router DNS recommendation:
 
 | IP             | Device                          | MAC               | Notes                              |
 | -------------- | ------------------------------- | ----------------- | ---------------------------------- |
-| 192.168.12.1   | Archer AX55 Pro "Stella" (LAN)  | 24:2F:D0:28:E0:06 | Router mode, WAN: 192.168.1.61     |
-| 192.168.12.242 | Tiamat (Proxmox host)           | B4:2E:99:AA:CF:06 | Gigabyte; enp4s0 in vmbr0          |
-| 192.168.12.244 | Bahamut (Pi 4, eth0)            | 88:A2:9E:85:CD:E6 | AdGuard DNS / WireGuard server     |
+| 192.168.12.254 | Archer AX55 Pro "Stella" (LAN)  | 24:2F:D0:28:E0:06 | Router mode, WAN: 192.168.1.61     |
+| 192.168.12.242 | Tiamat (Proxmox host)           | B4:2E:99:AA:CF:06 | Gigabyte; enp4s0 in vmbr0, gw .254 |
+| 192.168.12.244 | Bahamut (Pi 4, eth0)            | 88:A2:9E:85:CD:E6 | AdGuard DNS / WireGuard server, gw .254 |
 | 192.168.12.245 | Bahamut (Pi 4, wlan0)           | 88:A2:9E:85:CD:E7 | secondary iface                    |
 | 192.168.12.30  | CT-300 mediastack               | BC:24:11:E3:7C:DB | Jellyfin/Riven/n8n/Caddy           |
 | 192.168.12.123 | VM-990 Home Assistant OS        | 02:88:F9:77:28:E2 | Smart home hub                     |
